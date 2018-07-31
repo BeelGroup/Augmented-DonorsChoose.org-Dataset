@@ -1,0 +1,11 @@
+# Disregard editor configurations
+.vscode/
+
+# Programming caches
+__pycache__/
+
+# Ignore HDF5 files (Keras models)
+*.h5
+
+# Temporary output locations
+/tmp/

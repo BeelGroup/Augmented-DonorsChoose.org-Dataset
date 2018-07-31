@@ -1,0 +1,20 @@
+# Disregard auxiliary LaTeX files
+__*_temp.tex
+*.aux
+*.fdb_latexmk
+*.fls
+*.gz
+*.log
+*.nav
+*.out
+*.snm
+*.toc
+
+# Drop auto-generated BibLaTeX files from index
+*.bbl
+*.bcf
+*.blg
+*.run.xml
+
+# Ignore final PDF files
+*.pdf

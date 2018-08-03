@@ -31,7 +31,7 @@ class SciPySVD(object):
         """Initialize internal attributes of the class.
 
 		Args:
-			n_components: The number of singular values which to select upon decomposition.
+			n_components: The number of singular values which to select upon decomposition. Defaults to 100.
 			kwargs: Dictionary of additional arguments which are passed to the underlying algorithm.
 		"""
         self.n_components = 100 if n_components is None else n_components
@@ -44,7 +44,7 @@ class SciPySVD(object):
 
 		Args:
 			train_set: Dataset used for training.
-			y: Ignored. Present only for compatibility reasons.
+			y: Ignored optional target variable; present only for compatibility reasons.
 
 		Returns:
 			self: The instance of the fitted model.
@@ -58,7 +58,7 @@ class SciPySVD(object):
         """Return an estimate of the given input data using the fit parameters of the model.
 
 		Args:
-			train_set: Dataset used for training.
+			test_set: Dataset used for training.
 
 		Returns:
 			Estimation of the set using the fitted model for transformation.
@@ -82,7 +82,7 @@ class SKLearnSVD(object):
         """Initialize internal attributes of the class.
 
 		Args:
-			n_components: The number of singular values which to select upon decomposition.
+			n_components: The number of singular values which to select upon decomposition. Defaults to 100.
 			kwargs: Dictionary of additional arguments which are passed to the underlying algorithm.
 		"""
         self.n_components = 100 if n_components is None else n_components
@@ -95,7 +95,7 @@ class SKLearnSVD(object):
 
 		Args:
 			train_set: Dataset used for training.
-			y: Ignored. Present only for compatibility reasons.
+			y: Ignored optional target variable; present only for compatibility reasons.
 
 		Returns:
 			self: The instance of the fitted model.
@@ -106,7 +106,7 @@ class SKLearnSVD(object):
         """Return an estimate of the given input data using the fit parameters of the model.
 
 		Args:
-			train_set: Dataset used for training.
+			test_set: Dataset used for training.
 
 		Returns:
 			Estimation of the set using the fitted model for transformation.
@@ -128,8 +128,8 @@ class SKLearnKNN(object):
         """Initialize internal attributes of the class.
 
 		Args:
-			n_neighbors: The number of neighbors to use for nearest neighbor queries.
-			kwargs: Dictionary of additional arguments which are passed to the underlying algorithm.
+			n_neighbors: The number of neighbors to use for nearest neighbor queries. Defaults to 40.
+			kwargs: Dictionary of additional arguments which are passed to the underlying algorithm. Defaults to the cosine as distance metric and the brute algorithm.
 		"""
         self.n_neighbors = 40 if n_neighbors is None else n_neighbors
         self.kwargs = {'distance': 'cosine', 'algorithm': 'brute'} if kwargs is None else kwargs
@@ -141,7 +141,7 @@ class SKLearnKNN(object):
 
 		Args:
 			train_set: Dataset used for training.
-			y: Ignored. Present only for compatibility reasons.
+			y: Ignored optional target variable; present only for compatibility reasons.
 
 		Returns:
 			self: The instance of the fitted model.
@@ -155,7 +155,7 @@ class SKLearnKNN(object):
         """Return an estimate of the given input data using the fit parameters of the model.
 
 		Args:
-			train_set: Dataset used for training.
+			test_set: Dataset used for training.
 
 		Returns:
 			Estimation of the set using the fitted model for transformation.

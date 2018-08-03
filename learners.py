@@ -10,7 +10,6 @@ from sklearn.model_selection import KFold
 
 import recsys
 
-
 # Constant variables which might be worth reading in from a configuration file
 logging.basicConfig(level=logging.INFO)
 items_filepath = os.path.join('data', 'donorschoose.org', 'Donations.csv')
@@ -20,7 +19,6 @@ n_jobs = 2
 n_svd_components = 100
 n_samples = int(1e4)
 n_folds = 5
-
 
 # Implicitly rely on other commands using the current random state from numpy
 np.random.seed(random_state_seed)
@@ -34,7 +32,7 @@ projects.columns = projects.columns.str.replace(' ', '')
 items = items.sample(n=n_samples)
 
 items = pd.merge(items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
-logging.info('%d unique donors donated to %d unique projects respectively %d unique schools'%(len(items['DonorID'].unique()), len(items['ProjectID'].unique()), len(items['SchoolID'].unique())))
+logging.info('%d unique donors donated to %d unique projects respectively %d unique schools' % (len(items['DonorID'].unique()), len(items['ProjectID'].unique()), len(items['SchoolID'].unique())))
 # Convert DonationAmount into a 0/1 rating
 items.query('DonationAmount > 0')['DonationAmount'] = 1
 
@@ -48,8 +46,7 @@ col = items['SchoolID'].astype(pd.api.types.CategoricalDtype(categories=item_ids
 sparse_rating_matrix = csr_matrix((ratings, (row, col)), shape=(user_ids.shape[0], item_ids.shape[0]))
 
 sparsity = 1.0 - sparse_rating_matrix.nonzero()[0].shape[0] / np.dot(*sparse_rating_matrix.shape)
-logging.info('rating matrix is %.4f%% sparse'%(sparsity * 100))
-
+logging.info('rating matrix is %.4f%% sparse' % (sparsity * 100))
 
 kf = KFold(n_splits=n_folds, shuffle=True)
 
@@ -57,11 +54,11 @@ i = 0
 svd = recsys.SciPySVD(n_components=n_svd_components)
 # The indices of the matrix and the user_ids, item_ids must match in order to get the merge the prediction back into the frame
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
-	i += 1
-	# Perform a SVD on the training data
-	train_predictions = svd.fit_transform(sparse_rating_matrix[train_idx])
-	test_predictions = svd.estimate(sparse_rating_matrix[test_idx])
+    i += 1
+    # Perform a SVD on the training data
+    train_predictions = svd.fit_transform(sparse_rating_matrix[train_idx])
+    test_predictions = svd.estimate(sparse_rating_matrix[test_idx])
 
-	train_rmse, train_mae = recsys.rmse(train_predictions, sparse_rating_matrix[train_idx]), recsys.mae(train_predictions, sparse_rating_matrix[train_idx])
-	test_rmse, test_mae = recsys.rmse(test_predictions, sparse_rating_matrix[test_idx]), recsys.mae(test_predictions, sparse_rating_matrix[test_idx])
-	logging.info('SVD (fold %d/%d):: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f'%(i, n_folds, train_rmse, train_mae, test_rmse, test_mae))
+    train_rmse, train_mae = recsys.rmse(train_predictions, sparse_rating_matrix[train_idx]), recsys.mae(train_predictions, sparse_rating_matrix[train_idx])
+    test_rmse, test_mae = recsys.rmse(test_predictions, sparse_rating_matrix[test_idx]), recsys.mae(test_predictions, sparse_rating_matrix[test_idx])
+    logging.info('SVD (fold %d/%d):: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f' % (i, n_folds, train_rmse, train_mae, test_rmse, test_mae))

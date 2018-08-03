@@ -1,0 +1,19 @@
+# Top-most EditorConfig file
+root = true
+
+[*]
+trim_trailing_whitespace = true
+insert_final_newline = true
+
+# Set default charset to UTF-8
+[*.{js,py}]
+charset = utf-8
+
+# Honow python's 4 space indentation
+[*.py]
+indent_style = space
+indent_size = 4
+
+[*.md]
+indent_style = space
+indent_size = 2

@@ -1,4 +1,4 @@
-# Code and Literature Repository for Investigating Meta-Learning Algorithm in the Context of Recommender Systems
+# Code and Literature Repository for Investigating Meta-Learning Algorithms in the Context of Recommender Systems
 
 ## Inspiration
 

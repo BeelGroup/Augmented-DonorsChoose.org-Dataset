@@ -31,7 +31,7 @@ random_state_seed = 2718281828
 n_jobs = 2
 n_svd_components = 100
 n_samples = int(1e4)
-n_folds = 2
+n_folds = 5
 
 
 # Implicitly rely on other commands using the current random state from numpy
@@ -65,13 +65,18 @@ logging.info('rating matrix is %.4f%% sparse'%(sparsity * 100))
 
 kf = KFold(n_splits=n_folds, shuffle=True)
 
+i = 0
 # The indices of the matrix and the user_ids, item_ids must match in order to get the merge the prediction back into the frame
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
-	# Perform a SVD on the training data; Skip calculating u as it is not used afterwards
-	u, s, vt = svds(sparse_rating_matrix[train_idx], k=n_svd_components, return_singular_vectors='vh')
+	i += 1
+	# Perform a SVD on the training data
+	u, s, vt = svds(sparse_rating_matrix[train_idx], k=n_svd_components)
 
+	train_predictions = u.dot(np.diag(s)).dot(vt)
 	# Matrix 'u' corresponds to the user features and shall now be replaced by the test users
 	# Hence, to get our new 'u' from the input, one inverts 'vt' and 's'. Bear in mind, 's' is a real quadratic diagonal matrix while 'vt' is a non-quadratic unitary matrix.
-	rating_predictions = sparse_rating_matrix[test_idx].dot(vt.T).dot(vt)
+	test_predictions = sparse_rating_matrix[test_idx].dot(vt.T).dot(vt)
 
-	logging.info('SVD :: RMSE: %.2f, MAE: %.2f'%(rmse(rating_predictions, sparse_rating_matrix[test_idx]), mae(rating_predictions, sparse_rating_matrix[test_idx])))
+	train_rmse, train_mae = rmse(train_predictions, sparse_rating_matrix[train_idx]), mae(train_predictions, sparse_rating_matrix[train_idx])
+	test_rmse, test_mae = rmse(test_predictions, sparse_rating_matrix[test_idx]), mae(test_predictions, sparse_rating_matrix[test_idx])
+	logging.info('SVD (fold %d/%d):: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f'%(i, n_folds, train_rmse, train_mae, test_rmse, test_mae))

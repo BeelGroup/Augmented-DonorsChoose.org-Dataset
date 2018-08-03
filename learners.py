@@ -11,6 +11,62 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import KFold
 
 
+class SciPySVD(object):
+	"""SciPy's Singular Value Decomposition adapted for Recommender System tasks.
+
+    Decompose a matrix using SciPy and store the decomposition in the instance of the class to allow further evaluation.
+
+	Attributes:
+		u: Left matrix of the decomposition corresponding to the learned user attributes.
+		s: Center matrix of the decomposition with the singular values on the diagonal.
+		vt: Right matrix of the decomposition corresponding to the learned movie attributes.
+
+    Methods:
+		fit(X[, y]): Fit model to training data - target y being ignored
+		estimate(X): Predict target using fitted model
+    """
+
+	def __init__(self, n_components=None, **kwargs):
+		"""Initialize attributes of the class.
+
+		Args:
+			n_components: The number of singular values which to select upon decomposition.
+			kwargs: Dictionary of additional arguments which are passed to the underlying algorithm.
+		"""
+		self.n_components = 100 if n_components is None else n_components
+		self.kwargs = {} if kwargs is None else kwargs
+
+		self.u, self.s, self.vt = None, None, None
+
+	def fit_transform(self, train_set, y=None):
+		"""Perform the decomposition, store the resulting matrices for later estimations and return the final estimate for the input.
+
+		Args:
+			train_set: Dataset used for training.
+			y: Ignored. Present only for compatibility reasons.
+
+		Returns:
+			self: The instance of the fitted model.
+		"""
+		self.u, self.s, self.vt = svds(sparse_rating_matrix[train_idx], k=self.n_components, **self.kwargs)
+		self.s = np.diag(self.s)
+
+		return self.u.dot(self.s).dot(self.vt)
+
+	def estimate(self, test_set):
+		"""Return an estimate of the given input data using the fit parameters of the model.
+
+		Args:
+			train_set: Dataset used for training.
+
+		Returns:
+			Estimation of the set using the fitted model for transformation.
+		"""
+		# Matrix 'u' corresponds to the user features and shall now be replaced by the test users
+		# Hence, to get our new 'u' from the input, one inverts 'vt' and 's'. Bear in mind, 's' is a real quadratic diagonal matrix while 'vt' is a non-quadratic unitary matrix.
+		return test_set.dot(self.vt.T).dot(self.vt)
+
+
 def rmse(estimate, truth):
 	estimate = np.asarray(estimate[truth.nonzero()]).flatten()
 	truth = np.asarray(truth[truth.nonzero()]).flatten()
@@ -66,16 +122,13 @@ logging.info('rating matrix is %.4f%% sparse'%(sparsity * 100))
 kf = KFold(n_splits=n_folds, shuffle=True)
 
 i = 0
+svd = SciPySVD(n_components=n_svd_components)
 # The indices of the matrix and the user_ids, item_ids must match in order to get the merge the prediction back into the frame
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
 	i += 1
 	# Perform a SVD on the training data
-	u, s, vt = svds(sparse_rating_matrix[train_idx], k=n_svd_components)
-
-	train_predictions = u.dot(np.diag(s)).dot(vt)
-	# Matrix 'u' corresponds to the user features and shall now be replaced by the test users
-	# Hence, to get our new 'u' from the input, one inverts 'vt' and 's'. Bear in mind, 's' is a real quadratic diagonal matrix while 'vt' is a non-quadratic unitary matrix.
-	test_predictions = sparse_rating_matrix[test_idx].dot(vt.T).dot(vt)
+	train_predictions = svd.fit_transform(sparse_rating_matrix[train_idx])
+	test_predictions = svd.estimate(sparse_rating_matrix[test_idx])
 
 	train_rmse, train_mae = rmse(train_predictions, sparse_rating_matrix[train_idx]), mae(train_predictions, sparse_rating_matrix[train_idx])
 	test_rmse, test_mae = rmse(test_predictions, sparse_rating_matrix[test_idx]), mae(test_predictions, sparse_rating_matrix[test_idx])

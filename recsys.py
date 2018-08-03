@@ -2,6 +2,7 @@ import numpy as np
 from scipy.sparse.linalg import svds
 from sklearn.decomposition import TruncatedSVD
 from sklearn.metrics import mean_absolute_error, mean_squared_error
+from sklearn.neighbors import NearestNeighbors
 
 
 def rmse(estimate, truth):
@@ -111,3 +112,53 @@ class SKLearnSVD(object):
 			Estimation of the set using the fitted model for transformation.
 		"""
         return self.svd.inverse_transform(self.svd.transform(test_set))
+
+
+class SKLearnKNN(object):
+    """SciKit-Learn's k-Nearest-Neighbor clustering algorithm adapted for Recommender System tasks.
+
+    Find the nearest neighbors in a set and store the clusters in the instance of the class to allow further evaluation.
+
+    Methods:
+		fit_transform(X[, y]): Fit model to training data and return the estimate for the input - with target y being ignored.
+		estimate(X): Predict target using fitted model.
+    """
+
+    def __init__(self, n_neighbors=None, **kwargs):
+        """Initialize internal attributes of the class.
+
+		Args:
+			n_neighbors: The number of neighbors to use for nearest neighbor queries.
+			kwargs: Dictionary of additional arguments which are passed to the underlying algorithm.
+		"""
+        self.n_neighbors = 40 if n_neighbors is None else n_neighbors
+        self.kwargs = {'distance': 'cosine', 'algorithm': 'brute'} if kwargs is None else kwargs
+
+        self.knn = NearestNeighbors(n_neighbors=n_neighbors, **kwargs)
+
+    def fit_transform(self, train_set, y=None):
+        """Perform the nearest neighboor clustering, store the resulting parameters for later estimations and return the final estimate for the input.
+
+		Args:
+			train_set: Dataset used for training.
+			y: Ignored. Present only for compatibility reasons.
+
+		Returns:
+			self: The instance of the fitted model.
+		"""
+        self.knn.fit(train_set)
+        self.population_matrix = train_set.copy()  # K-NN queries depend on the training dataset to be present
+        indices = self.knn.kneighbors(train_set, n_neighbors=1, return_distance=False).flatten()
+        return self.population_matrix[indices]
+
+    def estimate(self, test_set):
+        """Return an estimate of the given input data using the fit parameters of the model.
+
+		Args:
+			train_set: Dataset used for training.
+
+		Returns:
+			Estimation of the set using the fitted model for transformation.
+		"""
+        indices = self.knn.kneighbors(test_set, n_neighbors=1, return_distance=False).flatten()
+        return self.population_matrix[indices]

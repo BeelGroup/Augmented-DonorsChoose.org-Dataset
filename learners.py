@@ -17,6 +17,7 @@ projects_filepath = os.path.join('data', 'donorschoose.org', 'Projects.csv')
 random_state_seed = 2718281828
 n_jobs = 2
 n_svd_components = 100
+n_knn_neighbors = 40
 n_samples = int(1e4)
 n_folds = 5
 
@@ -53,6 +54,7 @@ kf = KFold(n_splits=n_folds, shuffle=True)
 i = 0
 svd_scipy = recsys.SciPySVD(n_components=n_svd_components)
 svd_sklearn = recsys.SKLearnSVD(n_components=n_svd_components)
+knn = recsys.SKLearnKNN(n_neighbors=n_knn_neighbors)
 # The indices of the matrix and the user_ids, item_ids must match in order to get the merge the prediction back into the frame
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
     i += 1
@@ -70,3 +72,10 @@ for train_idx, test_idx in kf.split(sparse_rating_matrix):
     train_rmse, train_mae = recsys.rmse(train_predictions, sparse_rating_matrix[train_idx]), recsys.mae(train_predictions, sparse_rating_matrix[train_idx])
     test_rmse, test_mae = recsys.rmse(test_predictions, sparse_rating_matrix[test_idx]), recsys.mae(test_predictions, sparse_rating_matrix[test_idx])
     logging.info('SKLearn-SVD\t (fold %d/%d) :: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f' % (i, n_folds, train_rmse, train_mae, test_rmse, test_mae))
+
+    train_predictions = knn.fit_transform(sparse_rating_matrix[train_idx])
+    test_predictions = knn.estimate(sparse_rating_matrix[test_idx])
+
+    train_rmse, train_mae = recsys.rmse(train_predictions, sparse_rating_matrix[train_idx]), recsys.mae(train_predictions, sparse_rating_matrix[train_idx])
+    test_rmse, test_mae = recsys.rmse(test_predictions, sparse_rating_matrix[test_idx]), recsys.mae(test_predictions, sparse_rating_matrix[test_idx])
+    logging.info('SKLearn-KNN\t (fold %d/%d) :: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f' % (i, n_folds, train_rmse, train_mae, test_rmse, test_mae))

@@ -18,6 +18,7 @@ random_state_seed = 2718281828
 n_jobs = 2
 n_svd_components = 100
 n_knn_neighbors = 40
+n_nmf_components = 50
 n_samples = int(1e4)
 n_folds = 5
 
@@ -55,6 +56,7 @@ i = 0
 svd_scipy = recsys.SciPySVD(n_components=n_svd_components)
 svd_sklearn = recsys.SKLearnSVD(n_components=n_svd_components)
 knn = recsys.SKLearnKNN(n_neighbors=n_knn_neighbors)
+nmf = recsys.SKLearnNMF(n_components=n_nmf_components)
 # The ordering the indices of the matrix and the user_ids, item_ids of the frame must match in order to merge the prediction back into table
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
     i += 1
@@ -75,3 +77,9 @@ for train_idx, test_idx in kf.split(sparse_rating_matrix):
     train_rmse, train_mae = recsys.rmse(train_predictions, sparse_rating_matrix[train_idx]), recsys.mae(train_predictions, sparse_rating_matrix[train_idx])
     test_rmse, test_mae = recsys.rmse(test_predictions, sparse_rating_matrix[test_idx]), recsys.mae(test_predictions, sparse_rating_matrix[test_idx])
     logging.info('SKLearn-KNN\t (fold %d/%d) :: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f' % (i, n_folds, train_rmse, train_mae, test_rmse, test_mae))
+
+    train_predictions = nmf.fit_transform(sparse_rating_matrix[train_idx])
+    test_predictions = nmf.estimate(sparse_rating_matrix[test_idx])
+    train_rmse, train_mae = recsys.rmse(train_predictions, sparse_rating_matrix[train_idx]), recsys.mae(train_predictions, sparse_rating_matrix[train_idx])
+    test_rmse, test_mae = recsys.rmse(test_predictions, sparse_rating_matrix[test_idx]), recsys.mae(test_predictions, sparse_rating_matrix[test_idx])
+    logging.info('SKLearn-NMF\t (fold %d/%d) :: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f' % (i, n_folds, train_rmse, train_mae, test_rmse, test_mae))

@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.sparse.linalg import svds
-from sklearn.decomposition import TruncatedSVD
+from sklearn.decomposition import NMF, TruncatedSVD
 from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.neighbors import NearestNeighbors
 
@@ -112,6 +112,52 @@ class SKLearnSVD(object):
 			Estimation of the set using the fitted model for transformation.
 		"""
         return self.svd.inverse_transform(self.svd.transform(test_set))
+
+
+class SKLearnNMF(object):
+    """SciKit-Learn's Non-Negative Matrix Factorization adapted for Recommender System tasks.
+
+    Decompose a matrix using SciKit-Learn and store the decomposition in the instance of the class to allow further evaluation.
+
+    Methods:
+		fit_transform(X[, y]): Fit model to training data and return the estimate for the input - with target y being ignored.
+		estimate(X): Predict target using fitted model.
+    """
+
+    def __init__(self, n_components=None, **kwargs):
+        """Initialize internal attributes of the class.
+
+		Args:
+			n_components: The number of components which to select upon decomposition. Defaults to 50.
+			kwargs: Dictionary of additional arguments which are passed to the underlying algorithm.
+		"""
+        self.n_components = 50 if n_components is None else n_components
+        self.kwargs = {} if kwargs is None else kwargs
+
+        self.nmf = NMF(n_components=n_components, **kwargs)
+
+    def fit_transform(self, train_set, y=None):
+        """Perform the decomposition, store the resulting matrices for later estimations and return the final estimate for the input.
+
+		Args:
+			train_set: Dataset used for training.
+			y: Ignored optional target variable; present only for compatibility reasons.
+
+		Returns:
+			self: The instance of the fitted model.
+		"""
+        return self.nmf.inverse_transform(self.nmf.fit_transform(train_set))
+
+    def estimate(self, test_set):
+        """Return an estimate of the given input data using the fit parameters of the model.
+
+		Args:
+			test_set: Dataset used for training.
+
+		Returns:
+			Estimation of the set using the fitted model for transformation.
+		"""
+        return self.nmf.inverse_transform(self.nmf.transform(test_set))
 
 
 class SKLearnKNN(object):

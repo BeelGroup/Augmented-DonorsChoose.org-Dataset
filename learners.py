@@ -51,14 +51,22 @@ logging.info('rating matrix is %.4f%% sparse' % (sparsity * 100))
 kf = KFold(n_splits=n_folds, shuffle=True)
 
 i = 0
-svd = recsys.SciPySVD(n_components=n_svd_components)
+svd_scipy = recsys.SciPySVD(n_components=n_svd_components)
+svd_sklearn = recsys.SKLearnSVD(n_components=n_svd_components)
 # The indices of the matrix and the user_ids, item_ids must match in order to get the merge the prediction back into the frame
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
     i += 1
     # Perform a SVD on the training data
-    train_predictions = svd.fit_transform(sparse_rating_matrix[train_idx])
-    test_predictions = svd.estimate(sparse_rating_matrix[test_idx])
+    train_predictions = svd_scipy.fit_transform(sparse_rating_matrix[train_idx])
+    test_predictions = svd_scipy.estimate(sparse_rating_matrix[test_idx])
 
     train_rmse, train_mae = recsys.rmse(train_predictions, sparse_rating_matrix[train_idx]), recsys.mae(train_predictions, sparse_rating_matrix[train_idx])
     test_rmse, test_mae = recsys.rmse(test_predictions, sparse_rating_matrix[test_idx]), recsys.mae(test_predictions, sparse_rating_matrix[test_idx])
-    logging.info('SVD (fold %d/%d):: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f' % (i, n_folds, train_rmse, train_mae, test_rmse, test_mae))
+    logging.info('SciPy-SVD\t (fold %d/%d) :: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f' % (i, n_folds, train_rmse, train_mae, test_rmse, test_mae))
+
+    train_predictions = svd_sklearn.fit_transform(sparse_rating_matrix[train_idx])
+    test_predictions = svd_sklearn.estimate(sparse_rating_matrix[test_idx])
+
+    train_rmse, train_mae = recsys.rmse(train_predictions, sparse_rating_matrix[train_idx]), recsys.mae(train_predictions, sparse_rating_matrix[train_idx])
+    test_rmse, test_mae = recsys.rmse(test_predictions, sparse_rating_matrix[test_idx]), recsys.mae(test_predictions, sparse_rating_matrix[test_idx])
+    logging.info('SKLearn-SVD\t (fold %d/%d) :: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f' % (i, n_folds, train_rmse, train_mae, test_rmse, test_mae))

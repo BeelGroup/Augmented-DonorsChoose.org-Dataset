@@ -22,6 +22,8 @@ n_nmf_components = 50
 n_samples = int(1e4)
 n_folds = 5
 
+accuracy_methods = {'RMSE': recsys.rmse, 'MAE': recsys.mae}
+
 # Implicitly rely on other commands using the current random state from numpy
 np.random.seed(random_state_seed)
 
@@ -63,8 +65,12 @@ for train_idx, test_idx in kf.split(sparse_rating_matrix):
     i += 1
 
     for name, alg in algorithms.items():
+        log_line = '{:<15s} (fold {:>d}/{:<d}) ::'.format(name, i, n_folds)
         train_predictions = alg.fit_transform(sparse_rating_matrix[train_idx])
         test_predictions = alg.estimate(sparse_rating_matrix[test_idx])
-        train_rmse, train_mae = recsys.rmse(train_predictions, sparse_rating_matrix[train_idx]), recsys.mae(train_predictions, sparse_rating_matrix[train_idx])
-        test_rmse, test_mae = recsys.rmse(test_predictions, sparse_rating_matrix[test_idx]), recsys.mae(test_predictions, sparse_rating_matrix[test_idx])
-        logging.info('%s\t (fold %d/%d) :: Training-RMSE: %.2f, Training-MAE: %.2f, Validation-RMSE: %.2f, Validation-MAE: %.2f' % (name, i, n_folds, train_rmse, train_mae, test_rmse, test_mae))
+
+        for acc_name, acc in accuracy_methods.items():
+            train_acc, test_acc = acc(train_predictions, sparse_rating_matrix[train_idx]), acc(test_predictions, sparse_rating_matrix[test_idx])
+            log_line += ' | Training-{0:s}: {train_acc:>5.2f}, Test-{0:s}: {test_acc:>5.2f}'.format(acc_name, train_acc=train_acc, test_acc=test_acc)
+
+        logging.info(log_line)

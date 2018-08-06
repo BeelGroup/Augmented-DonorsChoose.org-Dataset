@@ -78,12 +78,12 @@ for train_idx, test_idx in kf.split(sparse_rating_matrix):
         for acc_name, acc in accuracy_methods.items():
             train_acc, test_acc = acc(train_predictions, sparse_rating_matrix[train_idx]), acc(test_predictions, sparse_rating_matrix[test_idx])
             algorithms_error[alg_name][acc_name] += np.array([train_acc, test_acc]) / n_folds
-            log_line += ' | Training-{0:s}: {train_acc:>5.2f}, Test-{0:s}: {test_acc:>5.2f}'.format(acc_name, train_acc=train_acc, test_acc=test_acc)
+            log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=train_acc, test_acc=test_acc)
 
         logging.info(log_line)
 
 for alg_name, acc_methods in algorithms_error.items():
     log_line = '{:<15s} (average) ::'.format(alg_name)
     for acc_name, acc_value in acc_methods.items():
-        log_line += ' | Training-{0:s}: {train_acc:>5.2f}, Test-{0:s}: {test_acc:>5.2f}'.format(acc_name, train_acc=acc_value[0], test_acc=acc_value[1])
+        log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=acc_value[0], test_acc=acc_value[1])
     logging.info(log_line)

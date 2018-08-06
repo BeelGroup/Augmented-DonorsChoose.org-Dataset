@@ -36,7 +36,7 @@ projects.columns = projects.columns.str.replace(' ', '')
 items = items.sample(n=n_samples)
 
 items = pd.merge(items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
-logging.info('%d unique donors donated to %d unique projects respectively %d unique schools' % (len(items['DonorID'].unique()), len(items['ProjectID'].unique()), len(items['SchoolID'].unique())))
+logging.info('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(len(items['DonorID'].unique()), len(items['ProjectID'].unique()), len(items['SchoolID'].unique())))
 # Convert DonationAmount into a 0/1 rating
 items.query('DonationAmount > 0')['DonationAmount'] = 1
 
@@ -50,7 +50,7 @@ col = items['SchoolID'].astype(pd.api.types.CategoricalDtype(categories=item_ids
 sparse_rating_matrix = csr_matrix((ratings, (row, col)), shape=(user_ids.shape[0], item_ids.shape[0]))
 
 sparsity = 1.0 - sparse_rating_matrix.nonzero()[0].shape[0] / np.dot(*sparse_rating_matrix.shape)
-logging.info('rating matrix is %.4f%% sparse' % (sparsity * 100))
+logging.info('rating matrix is {:.4%} sparse'.format(sparsity))
 
 kf = KFold(n_splits=n_folds, shuffle=True)
 

@@ -60,17 +60,30 @@ algorithms['SciPy-SVD'] = recsys.SciPySVD(n_components=n_svd_components)
 algorithms['SKLearn-SVD'] = recsys.SKLearnSVD(n_components=n_svd_components)
 algorithms['SKLearn-KNN'] = recsys.SKLearnKNN(n_neighbors=n_knn_neighbors)
 algorithms['SKLearn-NMF'] = recsys.SKLearnNMF(n_components=n_nmf_components)
+# Initialize a dictionary with an entry for each algorithm which shall store accuracy values for every selected accuracy method
+algorithms_error = {}
+for alg_name in algorithms.keys():
+    # Tuple of training error and test error for each algorithm
+    algorithms_error[alg_name] = {acc_name: np.array([0., 0.]) for acc_name in accuracy_methods.keys()}
+
 # The ordering the indices of the matrix and the user_ids, item_ids of the frame must match in order to merge the prediction back into the table
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
     i += 1
 
-    for name, alg in algorithms.items():
-        log_line = '{:<15s} (fold {:>d}/{:<d}) ::'.format(name, i, n_folds)
+    for alg_name, alg in algorithms.items():
+        log_line = '{:<15s} (fold {:>d}/{:<d}) ::'.format(alg_name, i, n_folds)
         train_predictions = alg.fit_transform(sparse_rating_matrix[train_idx])
         test_predictions = alg.estimate(sparse_rating_matrix[test_idx])
 
         for acc_name, acc in accuracy_methods.items():
             train_acc, test_acc = acc(train_predictions, sparse_rating_matrix[train_idx]), acc(test_predictions, sparse_rating_matrix[test_idx])
+            algorithms_error[alg_name][acc_name] += np.array([train_acc, test_acc]) / n_folds
             log_line += ' | Training-{0:s}: {train_acc:>5.2f}, Test-{0:s}: {test_acc:>5.2f}'.format(acc_name, train_acc=train_acc, test_acc=test_acc)
 
         logging.info(log_line)
+
+for alg_name, acc_methods in algorithms_error.items():
+    log_line = '{:<15s} (average) ::'.format(alg_name)
+    for acc_name, acc_value in acc_methods.items():
+        log_line += ' | Training-{0:s}: {train_acc:>5.2f}, Test-{0:s}: {test_acc:>5.2f}'.format(acc_name, train_acc=acc_value[0], test_acc=acc_value[1])
+    logging.info(log_line)

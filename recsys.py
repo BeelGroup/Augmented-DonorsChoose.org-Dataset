@@ -6,12 +6,34 @@ from sklearn.neighbors import NearestNeighbors
 
 
 def rmse(estimate, truth):
+    """Calculate the Root Mean Square Error for Recommender System tasks.
+
+    Compare the non-zero entries of the actual data to the ones from the estimated data and calculate the error.
+
+    Args:
+        estimate: An estimate respectively a prediction for the data.
+        truth: The actual result hence the true value of data.
+
+    Returns:
+        rmse: Distance measure between the truth and the estimate.
+    """
     estimate = np.asarray(estimate[truth.nonzero()]).flatten()
     truth = np.asarray(truth[truth.nonzero()]).flatten()
     return np.sqrt(mean_squared_error(estimate, truth))
 
 
 def mae(estimate, truth):
+    """Calculate the Mean Absolute Error for Recommender System tasks.
+
+    Compare the non-zero entries of the actual data to the ones from the estimated data and calculate the error.
+
+    Args:
+        estimate: An estimate respectively a prediction for the data.
+        truth: The actual result hence the true value of data.
+
+    Returns:
+        mae: Distance measure between the truth and the estimate.
+    """
     estimate = np.asarray(estimate[truth.nonzero()]).flatten()
     truth = np.asarray(truth[truth.nonzero()]).flatten()
     return mean_absolute_error(estimate, truth)

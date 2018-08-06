@@ -38,7 +38,7 @@ items = items.sample(n=n_samples)
 items = pd.merge(items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
 logging.info('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(len(items['DonorID'].unique()), len(items['ProjectID'].unique()), len(items['SchoolID'].unique())))
 # Convert DonationAmount into a 0/1 rating
-items.query('DonationAmount > 0')['DonationAmount'] = 1
+items.at[items['DonationAmount'] > 0, 'DonationAmount'] = 1
 
 # Create a sparse matrix for further analysis
 user_ids = items['DonorID'].unique()

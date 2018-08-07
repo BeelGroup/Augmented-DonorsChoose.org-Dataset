@@ -16,5 +16,8 @@ __*_temp.tex
 *.blg
 *.run.xml
 
+# Disregard configuration files for PDFPC
+*.pdfpc
+
 # Ignore final PDF files
 *.pdf

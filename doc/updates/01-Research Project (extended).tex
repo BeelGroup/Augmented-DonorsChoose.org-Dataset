@@ -1,0 +1,315 @@
+\documentclass[aspectratio=169]{beamer}
+	\usepackage[utf8]{inputenc}		% Required for umlauts
+	\usepackage[english]{babel}		% Language
+	%\usepackage[sfdefault]{roboto}	% Enable sans serif font roboto
+	%\usepackage{libertine}			% Enable this on Windows to allow for microtype
+	\usepackage[T1]{fontenc}		% Required for output of umlauts in PDF
+
+	\usepackage{mathtools}		% Required for formulas
+
+	\usepackage{caption}		% Customize caption aesthetics
+	\usepackage{tcolorbox}		% Fancy colored boxes
+	\usepackage{xcolor}			% Highlighting
+	\usepackage{soul}
+
+	\usepackage{graphicx}		% Required to insert images
+	\usepackage{subcaption}		% Enable sub-figure
+	\usepackage[space]{grffile} % Insert images baring a filename which contains spaces
+	\usepackage{float}			% Allow to forcefully set the location of an object
+
+	\usepackage[tracking=true]{microtype} % Required to change character spacing
+
+	\usepackage[style=alphabetic,backend=biber,sorting=none,giveninits=true,isbn=false,url=false]{biblatex}
+	\usepackage{csquotes}		% Ensure proper quotation of texts with babel and polyglossia with biblatex
+	\usepackage{hyperref}		% Insert clickable references
+
+	\usepackage{datetime}		% Flexible date specification
+	\newcommand{\leadingzero}[1]{\ifnum#1<10 0\the#1\else\the#1\fi}
+	\newcommand{\todayddmmyyyy}{\leadingzero{\day}.\leadingzero{\month}.\the\year}
+	\newcommand{\mathcolorbox}[2]{\colorbox{#1}{$\displaystyle #2$}}
+
+	\usepackage{geometry}
+	\usepackage{scrextend}		% Allow arbitrary indentation
+
+	\usepackage{color}
+
+	\usepackage{appendixnumberbeamer}	% Fancy page numbering excluding the appendix
+
+	% Compile notes into a separate file readable by pdfpc using a custom package which overwrite the `note` macro
+	\usepackage{../pdfpcnotes}
+
+	\makeatletter
+	% Fix subfig in beamer style presentation
+	\let\@@magyar@captionfix\relax
+
+	% Insert [short title] for \section in ToC
+	\patchcmd{\beamer@section}{{#2}{\the\c@page}}{{#1}{\the\c@page}}{}{}
+	% Insert [short title] for \section in Navigation
+	\patchcmd{\beamer@section}{{\the\c@section}{\secname}}{{\the\c@section}{#1}}{}{}
+	% Insert [short title] for \subsection in ToC
+	\patchcmd{\beamer@subsection}{{#2}{\the\c@page}}{{#1}{\the\c@page}}{}{}
+	% Insert [short title] for \subsection in Navigation
+	\patchcmd{\beamer@subsection}{{\the\c@subsection}{#2}}{{\the\c@subsection}{#1}}{}{}
+	\makeatother
+
+	\addbibresource{../literature.bib}
+
+	\setbeamercolor{title}{fg=orange}
+	\setbeamertemplate{title}{
+		\color{orange}
+		\textbf{\inserttitle}
+	}
+	\setbeamercolor{tableofcontents}{fg=orange}
+	\setbeamercolor{section in toc}{fg=black}
+	\setbeamercolor{subsection in toc}{fg=black}
+	\setbeamertemplate{frametitle}{
+		%\vspace{0.5em}
+		\color{orange}
+		\begin{center}
+			\textbf{\insertframetitle} \\
+			{\small \insertframesubtitle}
+		\end{center}
+	}
+	\setbeamertemplate{footline}[text line]{
+		\parbox{\linewidth}{
+			\color{gray}
+			\vspace*{-1em}
+			NII 2018
+			\hfill
+			Gordian (\href{mailto:gordian.edenhofer@gmail.com}{gordian.edenhofer@gmail.com})
+			\hfill
+			\insertframenumber/\inserttotalframenumber%
+		}
+	}
+	\setbeamertemplate{navigation symbols}{}
+	\setbeamertemplate{itemize item}{\color{black}$\bullet$}
+	\setbeamertemplate{itemize subitem}{\color{black}$\circ$}
+	\setbeamercolor{block title}{fg=black}
+	\captionsetup{font=scriptsize,labelfont={bf,scriptsize}}
+
+	\title{Meta-Learning~for~Recommender~Systems}
+	\subtitle{``learning to learn''}
+	\author[Edenhofer]{\href{mailto:gordian.edenhofer@gmail.com}{Gordian Edenhofer}}
+	\institute[NII]{
+		Working Group of Prof.~Dr.~Beel, Trinity College Dublin \\
+		Department of Prof.~Dr.~Akiko~Aizawa, Nationa Institute of Informatics
+	}
+	\date[Research Internship 2018]{National Institute of Informatics, \formatdate{08}{08}{2018}}
+	\subject{Natural Language Processing and Machine Translation}
+
+
+\begin{document}
+
+\pagenumbering{arabic}
+
+\begin{frame}[plain,noframenumbering]
+	\titlepage%
+\end{frame}
+
+\section[Introduction]{Algorithm Selection}
+\frame{\vfill\centering\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/hide]\vfill}
+
+\subsection{Problem Definition}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Failure to incorporate individuality of users and or items
+		\begin{itemize}
+			\item Collaborative filtering techniques aggregating groups of users
+			\item Content-based filtering techniques measuring similarity in choice of words
+		\end{itemize}
+		\item One-fits-it-all approach
+		\begin{itemize}
+			\item Inductive bias (see~\cite{DBLP:journals/corr/abs-1708-08447})
+			\note{Matrix factorization algorithm e.g.\ completely disregard descriptions and merely focuses on a rating}
+			\note{As shown by Beel et al.\ time, gender etc.\ plays a significant role}
+			\item Not necessarily superior for every user and or item (see~\cite{DBLP:journals/corr/abs-1805-12118})
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\subsection{Proposal}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Stacked ensemble learning
+		\begin{itemize}
+			\item Usually only incorporate a small subset of algorithm classes (cf.\ Random Forest)
+			\item Performance penalty of complex approaches
+		\end{itemize}
+		{
+			\setbeamertemplate{itemize item}{\color{black}$\Rightarrow$}
+			\item Algorithm selection as machine learning task
+		}
+		\begin{itemize}
+			\item Best algorithm for given user and or item
+			\item Minimal performance overhead (compared to stacked ensemble models)
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\section[Methodology]{Meta-Learning}
+\frame{\vfill\centering\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/hide]\vfill}
+
+\subsection{Abstract Concept}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Machine learning on metadata -- ``learning to learn''
+		\item Learning subsystem
+		\item Algorithm performance and or its estimate as new input (cf.\ stacked ensemble)
+	\end{itemize}
+\end{frame}
+
+\subsection{Recommender Systems}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Exemplary algorithms approaches for learning subsystems
+		\begin{itemize}
+			\item Collaborative filters (SVD, KNN, NMF, Co-Clustering)
+			\item Content-based filters (TF-IDF)
+			\item Deep learning (?)
+		\end{itemize}
+		\item Possible prediction target for meta-learner
+		\note{None yet implemented though slightly in favor of classification}
+		\begin{itemize}
+			\item Error of subsystem component
+			\item Item classification with subsystem algorithm as class
+			\item Algorithm ranking
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\subsection[Related Work]{Meta-Learning in related Literature}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item `One-at-a-time'~\cite{DBLP:journals/corr/abs-1805-12118}
+		\begin{itemize}
+			\item Main inspiration for this research
+			\item Outline of the concepts and exploration of initial approaches
+		\end{itemize}
+		\note{One-at-a-time: Micro- and macro- recommenders}
+		\note{One-at-a-time: Theoretical best}
+		\note{One-at-a-time: Failure to achieve good results using simple regression}
+		\item `Metalearning and Recommender Systems'~\cite{CUNHA2018128}
+		\note{ML and RecSys: Recommender systems evaluationg and accuracy measures}
+		\note{ML and RecSys: Overview of recommender systems: Collaborative Filtering, Content based Filtering, Social based Filtering, Knowledge based Filtering, Hybrid Filtering, Context-aware Filtering, Deep Learning-based Recommendations and Group Recommendations}
+		\note{ML and RecSys: Recommender systems evaluationg and accuracy measures}
+		\note{ML and RecSys: Meta-features, Meta-targets, Meta-level}
+		\item `When Recommenders Fail'~\cite{Ekstrand:2012:RFP:2365952.2366002}
+		\note{When Recommendations Fail: Missing user and item feature in MovieLense data for proper algorithm selection}
+	\end{itemize}
+\end{frame}
+
+\section{Meta-Learning Experiment}
+\frame{\vfill\centering\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/hide]\vfill}
+
+\subsection{Roadmap}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Search for suitable dataset
+		\begin{itemize}
+			\item Requirements: item, user and contextual information
+			\item Potential candidates: DonorsChoose.org, Docear
+		\end{itemize}
+		\item Explore and implement algorithms for learning subsystem
+		\begin{itemize}
+			\item Algorithm classes: Collaborative filters, Content-based filters, Deep learning
+			\item Merge algorithm's error and prediction back into original dataset
+		\end{itemize}
+		\item Choose simple meta-learner
+		\note{What do I want as features?}
+	\end{itemize}
+\end{frame}
+
+\subsection{Roadmap/Baseline}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Evaluate and compare to suitable baseline
+		\note{Evaluation: First comparison may be drawn to the overall best algorithm}
+		\note{Evaluation: RMSE for overall error, nDCG for ranking, Statistical test (?)}
+		\item Comparison to scores given by other sources
+		\note{Past scores may be difficult to find for certain datasets}
+		\begin{itemize}
+			\item Difficult for certain data which is not yet explored in literature
+			\item Dependant on accuracy measure, input-features, \ldots
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\subsection{Current Status}
+
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	Recently
+	\begin{itemize}
+		\item Dataset selection
+		\begin{itemize}
+			{
+				\setbeamertemplate{itemize subitem}{\color{black}$\rightarrow$}
+				\item Table of suitable candidates
+			}
+			\item Select DonorsChoose.org data as initial set
+			\note{DonorsChoose.org dataset features user, item and context information}
+		\end{itemize}
+		\item Learning subsystem
+		\begin{itemize}
+			{
+				\setbeamertemplate{itemize subitem}{\color{black}$\rightarrow$}
+				\item Collaborative filters implemented
+			}
+			\item Poor performance on current dataset
+		\end{itemize}
+	\end{itemize}
+
+	Soon\texttrademark%
+	\begin{itemize}
+		\item Merge meta-features back into existing dataset
+		\item Train meta-learner
+	\end{itemize}
+\end{frame}
+
+\section[Outlook]{Deep-Learning \& Meta-Learner}
+\frame{\vfill\centering\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/hide]\vfill}
+
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Explore and potentially implement deep-learning recommender approach
+		\item Investigate different meta-learning designs
+		\note{Meta-learner designs: cf.\ error prediction, classification}
+	\end{itemize}
+\end{frame}
+
+\appendix
+
+\section*{Bibliography}
+\begin{frame}[shrink=10]
+	\frametitle{\insertsection}
+
+	\printbibliography%
+\end{frame}
+
+\end{document}

@@ -1,13 +1,29 @@
 # Disregard auxiliary LaTeX files
 __*_temp.tex
 *.aux
+*.acn
+*.acr
+*.alg
+*.bbl
+*.bcf
+*.blg
+*.dvi
 *.fdb_latexmk
 *.fls
-*.gz
+*.glg
+*.glo
+*.gls
+*.idx
+*.ind
+*.ist
+*.lof
 *.log
+*.lot
 *.nav
 *.out
+*.run.xml
 *.snm
+*.synctex.gz
 *.toc
 
 # Drop auto-generated BibLaTeX files from index

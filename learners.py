@@ -47,7 +47,7 @@ for method, opt in sampling_methods.items():
         raise ValueError('Expected a valid sampling method, got "' + str(method) + '"')
 
 items = pd.merge(items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
-logging.info('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(len(items['DonorID'].unique()), len(items['ProjectID'].unique()), len(items['SchoolID'].unique())))
+logging.info('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(items['DonorID'].unique().shape[0], items['ProjectID'].unique().shape[0], items['SchoolID'].unique().shape[0]))
 # Convert DonationAmount into a 0/1 rating
 items.at[items['DonationAmount'] > 0, 'DonationAmount'] = 1
 

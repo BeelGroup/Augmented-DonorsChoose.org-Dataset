@@ -81,20 +81,20 @@ for alg_name in algorithms.keys():
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
     i += 1
 
-    for alg_name, alg in algorithms.items():
+    for alg_name, alg in sorted(algorithms.items(), key=lambda x: x[0]):  # Predictable algorithm order for reproducibility
         log_line = '{:<15s} (fold {:>d}/{:<d}) ::'.format(alg_name, i, n_folds)
         train_predictions = alg.fit_transform(sparse_rating_matrix[train_idx])
         test_predictions = alg.estimate(sparse_rating_matrix[test_idx])
 
-        for acc_name, acc in accuracy_methods.items():
+        for acc_name, acc in sorted(accuracy_methods.items(), key=lambda x: x[0]):  # Predictable algorithm order for pretty printing
             train_acc, test_acc = acc(train_predictions, sparse_rating_matrix[train_idx]), acc(test_predictions, sparse_rating_matrix[test_idx])
             algorithms_error[alg_name][acc_name] += np.array([train_acc, test_acc]) / n_folds
             log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=train_acc, test_acc=test_acc)
 
         logging.info(log_line)
 
-for alg_name, acc_methods in algorithms_error.items():
+for alg_name, acc_methods in sorted(algorithms_error.items(), key=lambda x: x[0]):
     log_line = '{:<15s} (average) ::'.format(alg_name)
-    for acc_name, acc_value in acc_methods.items():
+    for acc_name, acc_value in sorted(acc_methods.items(), key=lambda x: x[0]):
         log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=acc_value[0], test_acc=acc_value[1])
     logging.info(log_line)

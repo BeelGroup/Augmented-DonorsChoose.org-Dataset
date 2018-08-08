@@ -15,11 +15,12 @@ logging.basicConfig(level=logging.INFO)
 items_filepath = os.path.join('data', 'donorschoose.org', 'Donations.csv')
 projects_filepath = os.path.join('data', 'donorschoose.org', 'Projects.csv')
 random_state_seed = 2718281828
+# Apply cleaning methods and sample the data as to reduce the amount of required memory
+sampling_methods = {'user_frequency_boundary': 2, 'sample': int(1e4)}
 n_jobs = 2
 n_svd_components = 100
 n_knn_neighbors = 40
 n_nmf_components = 50
-n_samples = int(1e4)
 n_folds = 5
 
 accuracy_methods = {'RMSE': recsys.rmse, 'MAE': recsys.mae}
@@ -32,8 +33,18 @@ projects = pd.read_csv(projects_filepath)
 # Get rid of pesky whitespaces in column names
 items.columns = items.columns.str.replace(' ', '')
 projects.columns = projects.columns.str.replace(' ', '')
-# Sample the data as to reduce the amount of required memory
-items = items.sample(n=n_samples)
+
+for method, opt in sampling_methods.items():
+    if opt is None or opt is False:
+        pass
+    elif method == 'user_frequency_boundary':
+        value_counts = items['DonorID'].value_counts()
+        items = items[items['DonorID'].isin(value_counts.index[value_counts >= opt])]
+        del value_counts
+    elif method == 'sample':
+        items = items.sample(n=opt)
+    else:
+        raise ValueError('Expected a valid sampling method, got "' + str(method) + '"')
 
 items = pd.merge(items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
 logging.info('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(len(items['DonorID'].unique()), len(items['ProjectID'].unique()), len(items['SchoolID'].unique())))

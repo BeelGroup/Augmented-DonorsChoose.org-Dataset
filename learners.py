@@ -22,7 +22,9 @@ n_svd_components = 100
 n_knn_neighbors = 40
 n_nmf_components = 50
 n_folds = 5
-
+rating_scores = np.arange(1., 6.)
+# Cut only on the given quantile range to mitigate the effect of outliers and append the bottom and top to the first respectively last bin afterwards
+rating_range_quantile = (0.05, 0.95)
 accuracy_methods = {'RMSE': recsys.rmse, 'MAE': recsys.mae}
 
 # Implicitly rely on other commands using the current random state from numpy
@@ -48,8 +50,10 @@ for method, opt in sampling_methods.items():
 
 items = pd.merge(items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
 logging.info('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(items['DonorID'].unique().shape[0], items['ProjectID'].unique().shape[0], items['SchoolID'].unique().shape[0]))
-# Convert DonationAmount into a 0/1 rating
-items.at[items['DonationAmount'] > 0, 'DonationAmount'] = 1
+# Convert DonationAmount into a rating
+rating_bins = np.linspace(*items['DonationAmount'].quantile(rating_range_quantile).values, num=len(rating_scores) + 1)
+rating_bins[0], rating_bins[-1] = items['DonationAmount'].min(), items['DonationAmount'].max()
+items['DonationAmount'] = pd.cut(items['DonationAmount'], bins=rating_bins, include_lowest=True, labels=rating_scores, retbins=False)
 
 # Create a sparse matrix for further analysis
 user_ids = items['DonorID'].unique()

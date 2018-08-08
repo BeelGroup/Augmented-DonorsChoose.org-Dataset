@@ -16,7 +16,7 @@ items_filepath = os.path.join('data', 'donorschoose.org', 'Donations.csv')
 projects_filepath = os.path.join('data', 'donorschoose.org', 'Projects.csv')
 random_state_seed = 2718281828
 # Apply cleaning methods and sample the data as to reduce the amount of required memory
-sampling_methods = {'user_frequency_boundary': 2, 'sample': int(1e4)}
+sampling_methods = {'remove_duplicate_ratings': True, 'user_frequency_boundary': 2, 'sample': int(1e4)}
 n_jobs = 2
 n_svd_components = 100
 n_knn_neighbors = 40
@@ -27,6 +27,9 @@ rating_scores = np.arange(1., 6.)
 rating_range_quantile = (0.05, 0.95)
 accuracy_methods = {'RMSE': recsys.rmse, 'MAE': recsys.mae}
 
+# Constant values
+sampling_methods_priority = {'remove_duplicate_ratings': 100, 'user_frequency_boundary': 200, 'sample': 900}
+
 # Implicitly rely on other commands using the current random state from numpy
 np.random.seed(random_state_seed)
 
@@ -36,9 +39,14 @@ projects = pd.read_csv(projects_filepath)
 items.columns = items.columns.str.replace(' ', '')
 projects.columns = projects.columns.str.replace(' ', '')
 
-for method, opt in sampling_methods.items():
+items = pd.merge(items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
+
+# Apply the cleaning and sampling operations in a fixed order independently of the order of the dict or the user's choice
+for method, opt in sorted(sampling_methods.items(), key=lambda x: sampling_methods_priority[x[0]]):
     if opt is None or opt is False:
         pass
+    elif method == 'remove_duplicate_ratings':
+        items = items.drop_duplicates(['DonorID', 'SchoolID'], keep='first')
     elif method == 'user_frequency_boundary':
         value_counts = items['DonorID'].value_counts()
         items = items[items['DonorID'].isin(value_counts.index[value_counts >= opt])]
@@ -46,9 +54,8 @@ for method, opt in sampling_methods.items():
     elif method == 'sample':
         items = items.sample(n=opt)
     else:
-        raise ValueError('Expected a valid sampling method, got "' + str(method) + '"')
+        raise ValueError('Expected a valid sampling method from ' + str(sampling_methods_priority.keys()) + ', got "' + str(method) + '"')
 
-items = pd.merge(items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
 logging.info('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(items['DonorID'].unique().shape[0], items['ProjectID'].unique().shape[0], items['SchoolID'].unique().shape[0]))
 # Convert DonationAmount into a rating
 rating_bins = np.linspace(*items['DonationAmount'].quantile(rating_range_quantile).values, num=len(rating_scores) + 1)

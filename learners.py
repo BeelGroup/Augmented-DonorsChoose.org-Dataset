@@ -74,6 +74,14 @@ sparse_rating_matrix = csr_matrix((ratings, (row, col)), shape=(user_ids.shape[0
 sparsity = 1.0 - sparse_rating_matrix.nonzero()[0].shape[0] / np.dot(*sparse_rating_matrix.shape)
 logging.info('rating matrix is {:.4%} sparse'.format(sparsity))
 
+for baseline_name, baseline_val in [('zero', np.zeros(sparse_rating_matrix.data.shape[0])), ('mean', np.full(sparse_rating_matrix.data.shape[0], sparse_rating_matrix.data.mean())), ('random', np.random.uniform(low=min(rating_scores), high=max(rating_scores), size=sparse_rating_matrix.data.shape[0]))]:
+    log_line = '{:<8s} ::'.format(baseline_name)
+    for acc_name, acc in sorted(accuracy_methods.items(), key=lambda x: x[0]):  # Predictable algorithm order for pretty printing
+        overall_acc = acc(baseline_val, sparse_rating_matrix)
+        log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
+
+    logging.info(log_line)
+
 kf = KFold(n_splits=n_folds, shuffle=True)
 
 i = 0

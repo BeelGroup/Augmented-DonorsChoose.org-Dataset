@@ -12,13 +12,21 @@ def rmse(estimate, truth):
 
     Args:
         estimate: An estimate respectively a prediction for the data.
-        truth: The actual result hence the true value of data.
+        truth: The actual result hence the true value of the data.
 
     Returns:
         rmse: Distance measure between the truth and the estimate.
+
+    Raises:
+        ValueError: If the shapes of the estimate and the truth are not the same after selecting the non-zero entries of the actual data.
     """
-    estimate = np.asarray(estimate[truth.nonzero()]).flatten()
+    if estimate.ndim != 1:
+        estimate = np.asarray(estimate[truth.nonzero()]).flatten()
     truth = np.asarray(truth[truth.nonzero()]).flatten()
+
+    if estimate.shape != truth.shape:
+        raise ValueError('estimate and truth are of different shapes after selecting the non-zero entries of the actual data')
+
     return np.sqrt(mean_squared_error(estimate, truth))
 
 
@@ -29,13 +37,21 @@ def mae(estimate, truth):
 
     Args:
         estimate: An estimate respectively a prediction for the data.
-        truth: The actual result hence the true value of data.
+        truth: The actual result hence the true value of the data.
 
     Returns:
         mae: Distance measure between the truth and the estimate.
+
+    Raises:
+        ValueError: If the shapes of the estimate and the truth are not the same after selecting the non-zero entries of the actual data.
     """
-    estimate = np.asarray(estimate[truth.nonzero()]).flatten()
+    if estimate.ndim != 1:
+        estimate = np.asarray(estimate[truth.nonzero()]).flatten()
     truth = np.asarray(truth[truth.nonzero()]).flatten()
+
+    if estimate.shape != truth.shape:
+        raise ValueError('estimate and truth are of different shapes after selecting the non-zero entries of the actual data')
+
     return mean_absolute_error(estimate, truth)
 
 

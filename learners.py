@@ -97,20 +97,21 @@ for alg_name in algorithms.keys():
     algorithms_error[alg_name] = {acc_name: np.array([0., 0.]) for acc_name in accuracy_methods.keys()}
 
 # The ordering the indices of the matrix and the user_ids, item_ids of the frame must match in order to merge the prediction back into the table
+# By default the created sparse matrix has sorted indices. However, act with caution when working with subsets of the matrix!
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
     i += 1
 
     for alg_name, alg in sorted(algorithms.items(), key=lambda x: x[0]):  # Predictable algorithm order for reproducibility
         log_line = '{:<15s} (fold {:>d}/{:<d}) ::'.format(alg_name, i, n_folds)
-        train_predictions = alg.fit_transform(sparse_rating_matrix[train_idx])
-        test_predictions = alg.estimate(sparse_rating_matrix[test_idx])
+        train_predictions = alg.fit_transform(sparse_rating_matrix[train_idx].sorted_indices())
+        test_predictions = alg.estimate(sparse_rating_matrix[test_idx].sorted_indices())
 
         # Extract the training prediction from the matrix by selecting the proper indices from the train_idx and the matrix
         user_merge_idx, item_merge_idx = sparse_rating_matrix.nonzero()
         train_users = np.isin(user_merge_idx, train_idx)  # The train_idx is a subset of the rows of the matrix
         user_merge_idx, item_merge_idx = user_merge_idx[train_users], item_merge_idx[train_users]
         # Multiply the prediction with 1/(n_folds-1) and add it to the table as meta-feature; Use n_folds-1 as each fold is also used as test set once
-        items_train_prediction = pd.DataFrame({'Prediction' + alg_name: np.asarray(train_predictions[sparse_rating_matrix[train_idx].nonzero()]).flatten() / (n_folds - 1), 'DonorID': user_ids[user_merge_idx], 'SchoolID': item_ids[item_merge_idx]})
+        items_train_prediction = pd.DataFrame({'Prediction' + alg_name: np.asarray(train_predictions[sparse_rating_matrix[train_idx].sorted_indices().nonzero()]).flatten() / (n_folds - 1), 'DonorID': user_ids[user_merge_idx], 'SchoolID': item_ids[item_merge_idx]})
         items = pd.merge(items, items_train_prediction, on=['DonorID', 'SchoolID'], how='left', suffixes=('_x', '_y'), sort=False)
         # Add predictions and remove separate results if necessary
         if 'Prediction' + alg_name + '_x' in items.columns and 'Prediction' + alg_name + '_y' in items.columns:
@@ -118,7 +119,7 @@ for train_idx, test_idx in kf.split(sparse_rating_matrix):
             items = items.drop(['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y'], axis=1)
 
         for acc_name, acc in sorted(accuracy_methods.items(), key=lambda x: x[0]):  # Predictable algorithm order for pretty printing
-            train_acc, test_acc = acc(train_predictions, sparse_rating_matrix[train_idx]), acc(test_predictions, sparse_rating_matrix[test_idx])
+            train_acc, test_acc = acc(train_predictions, sparse_rating_matrix[train_idx].sorted_indices()), acc(test_predictions, sparse_rating_matrix[test_idx].sorted_indices())
             algorithms_error[alg_name][acc_name] += np.array([train_acc, test_acc]) / n_folds
             log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=train_acc, test_acc=test_acc)
 

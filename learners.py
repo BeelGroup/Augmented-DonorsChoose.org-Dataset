@@ -39,7 +39,7 @@ projects = pd.read_csv(projects_filepath)
 donations.columns = donations.columns.str.replace(' ', '')
 projects.columns = projects.columns.str.replace(' ', '')
 
-items = pd.merge(donations, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
+items = pd.merge(donations[['ProjectID', 'DonorID', 'DonationAmount']], projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
 
 # Apply the cleaning and sampling operations in a fixed order independently of the order of the dict or the user's choice
 for method, opt in sorted(sampling_methods.items(), key=lambda x: sampling_methods_priority[x[0]]):

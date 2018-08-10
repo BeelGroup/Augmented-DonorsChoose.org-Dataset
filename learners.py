@@ -16,7 +16,7 @@ donations_filepath = os.path.join('data', 'donorschoose.org', 'Donations.csv')
 projects_filepath = os.path.join('data', 'donorschoose.org', 'Projects.csv')
 random_state_seed = 2718281828
 # Apply cleaning methods and sample the data as to reduce the amount of required memory
-sampling_methods = {'remove_duplicate_ratings': True, 'user_frequency_boundary': 2, 'sample': int(1e4)}
+sampling_methods = {'drop_raw_values': ['0. <= DonationAmount <= 2.'], 'remove_duplicate_ratings': True, 'user_frequency_boundary': 2, 'sample': int(1e4)}
 n_jobs = 2
 n_svd_components = 100
 n_knn_neighbors = 40
@@ -28,7 +28,7 @@ rating_range_quantile = (0.05, 0.95)
 accuracy_methods = {'RMSE': recsys.rmse, 'MAE': recsys.mae}
 
 # Constant values
-sampling_methods_priority = {'remove_duplicate_ratings': 100, 'user_frequency_boundary': 200, 'sample': 900}
+sampling_methods_priority = {'drop_raw_values': 200, 'remove_duplicate_ratings': 300, 'user_frequency_boundary': 500, 'sample': 900}
 
 # Implicitly rely on other commands using the current random state from numpy
 np.random.seed(random_state_seed)
@@ -45,6 +45,9 @@ items = pd.merge(donations, projects[['ProjectID', 'SchoolID']], on='ProjectID',
 for method, opt in sorted(sampling_methods.items(), key=lambda x: sampling_methods_priority[x[0]]):
     if opt is None or opt is False:
         pass
+    elif method == 'drop_raw_values':
+        for drop_query in opt:
+            items = items.drop(items.query(drop_query).index)
     elif method == 'remove_duplicate_ratings':
         items = items.drop_duplicates(['DonorID', 'SchoolID'], keep='first')
     elif method == 'user_frequency_boundary':

@@ -15,3 +15,64 @@ The main inspiration for this research is based on the work performed by the ADA
 * Train and compare various meta-learning models
   * Predict either rating error or reformulate algorithm selection as classification problem
   * Evaluate model using appropriate variables, possible candidates might be the normalized discounted cumulative gain or the Kendall rank correlation coefficient
+
+## Code Snippets
+
+### Non-interactive plotting
+
+```python
+import matplotlib as mpl
+
+mpl.use('cairo')
+
+import matplotlib.pyplot as plt
+```
+
+### Visualizations
+
+* Plot the donated amount via bins on a logarithmic scale
+
+```python
+items_orig = pd.merge(donations[['ProjectID', 'DonorID', 'DonationAmount']], projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
+
+plt.figure()
+plt.hist(items_orig['DonationAmount'], bins=np.logspace(np.log10(items_orig['DonationAmount'].min()), np.log10(items_orig['DonationAmount'].max()), num=28 + 1), histtype='step')
+plt.gca().set_xscale('log')
+plt.xlabel('Donated Amount')
+plt.ylabel('#Occurrence')
+plt.tight_layout()
+plt.savefig('DonationAmount - Distribution of the donated amount on a logarithmic scale.pdf')
+plt.close()
+```
+
+* Plot the donated amount via bins on a logarithmic scale for clean subset
+
+```python
+items_orig = pd.merge(donations[['ProjectID', 'DonorID', 'DonationAmount']], projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
+# Perform preliminary data cleaning
+items_orig = items_orig.drop_duplicates(['DonorID', 'SchoolID'], keep='first')
+items_orig = items_orig.drop(items_orig.query('0. <= DonationAmount <= 2.').index)
+value_counts = items_orig['DonorID'].value_counts()
+items_orig = items_orig[items_orig['DonorID'].isin(value_counts.index[value_counts >= 2])]
+
+plt.figure()
+plt.hist(items_orig['DonationAmount'], bins=np.logspace(np.log10(items_orig['DonationAmount'].min()), np.log10(items_orig['DonationAmount'].max()), num=13 + 1), histtype='step')
+plt.gca().set_xscale('log')
+plt.xlabel('Donated Amount')
+plt.ylabel('#Occurrence')
+plt.tight_layout()
+plt.savefig('DonationAmount - Distribution of the donated amount on a logarithmic scale (for donors with at least 2 donations, excluding duplicates and low donations).pdf')
+plt.close()
+```
+
+* Plot the distribution of ratings
+
+```python
+plt.figure()
+plt.hist(items['DonationAmount'], histtype='step', bins=5)
+plt.xlabel('Rating')
+plt.ylabel('#Occurrence')
+plt.tight_layout()
+plt.savefig('DonationAmount - Distribution of Ratings for logarithmic bins and excluded outliers.pdf')
+plt.close()
+```

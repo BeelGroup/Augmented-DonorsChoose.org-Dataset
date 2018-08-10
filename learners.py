@@ -24,7 +24,7 @@ n_nmf_components = 50
 n_folds = 5
 rating_scores = np.arange(1., 6.)
 # Cut only on the given quantile range to mitigate the effect of outliers and append the bottom and top to the first respectively last bin afterwards
-rating_range_quantile = (0.05, 0.95)
+rating_range_quantile = (0., 1. - 1e-2)
 accuracy_methods = {'RMSE': recsys.rmse, 'MAE': recsys.mae}
 
 # Constant values
@@ -61,7 +61,7 @@ for method, opt in sorted(sampling_methods.items(), key=lambda x: sampling_metho
 
 logging.info('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(items['DonorID'].unique().shape[0], items['ProjectID'].unique().shape[0], items['SchoolID'].unique().shape[0]))
 # Convert DonationAmount into a rating
-rating_bins = np.linspace(*items['DonationAmount'].quantile(rating_range_quantile).values, num=len(rating_scores) + 1)
+rating_bins = np.logspace(*np.log10(items['DonationAmount'].quantile(rating_range_quantile).values), num=len(rating_scores) + 1)
 rating_bins[0], rating_bins[-1] = items['DonationAmount'].min(), items['DonationAmount'].max()
 items['DonationAmount'] = pd.cut(items['DonationAmount'], bins=rating_bins, include_lowest=True, labels=rating_scores, retbins=False)
 

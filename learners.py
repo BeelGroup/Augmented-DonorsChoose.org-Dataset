@@ -5,8 +5,11 @@ import os
 
 import numpy as np
 import pandas as pd
+import surprise as spl
 from scipy.sparse import csr_matrix
 from sklearn.model_selection import KFold
+from surprise.model_selection import KFold as spl_KFold
+from surprise.reader import Reader as spl_Reader
 
 import recsys
 
@@ -133,3 +136,31 @@ for alg_name, acc_methods in sorted(algorithms_error.items(), key=lambda x: x[0]
     for acc_name, acc_value in sorted(acc_methods.items(), key=lambda x: x[0]):
         log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=acc_value[0], test_acc=acc_value[1])
     logging.info(log_line)
+
+spl_algorithms = {}
+spl_algorithms['SPL-SVD'] = spl.SVD()
+spl_algorithms['SPL-SVDpp'] =  spl.SVDpp()
+spl_algorithms['SPL-NMF'] = spl.NMF()
+spl_algorithms['SPL-KNNWithMeans'] = spl.KNNWithMeans()
+spl_algorithms['SPL-KNNBasic'] = spl.KNNBasic()
+spl_algorithms['SPL-KNNWithZScore'] = spl.KNNWithZScore()
+spl_algorithms['SPL-KNNBaseline'] = spl.KNNBaseline()
+spl_algorithms['SPL-NormalPredictor'] = spl.NormalPredictor()
+spl_algorithms['SPL-CoClustering'] = spl.CoClustering()
+spl_algorithms['SPL-SlopeOne'] = spl.SlopeOne()
+
+# Read data into scikit-surprise respectively surpriselib
+spl_reader = spl_Reader(line_format='user item rating', rating_scale=(int(rating_scores.min()), int(rating_scores.max())))
+spl_items = spl.Dataset.load_from_df(items[['DonorID', 'SchoolID', 'DonationAmount']], spl_reader)
+
+spl_kf = spl_KFold(n_splits=n_folds, shuffle=True)
+for spl_train, spl_test in spl_kf.split(spl_items):
+    for alg_name, alg in sorted(spl_algorithms.items(), key=lambda x: x[0]):
+        alg.fit(spl_train)
+        # Test returns an object of type surprise.prediction_algorithms.predictions.Prediction
+        predictions = pd.DataFrame(alg.test(spl_test), columns=['DonorID', 'SchoolID', 'TrueRating', 'Prediction' + alg_name, 'RatingDetails'])
+        # Merge the predicted rating into the dataframe
+        items = pd.merge(items, predictions[['DonorID', 'SchoolID', 'Prediction' + alg_name]], on=['DonorID', 'SchoolID'], how='left', suffixes=('_x', '_y'), sort=False)
+        if 'Prediction' + alg_name + '_x' in items.columns and 'Prediction' + alg_name + '_y' in items.columns:
+            items['Prediction' + alg_name] = items[['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y']].sum(axis=1)
+            items = items.drop(['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y'], axis=1)

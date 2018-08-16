@@ -14,12 +14,14 @@ from surprise.reader import Reader as spl_Reader
 import recsys
 
 # Constant variables which might be worth reading in from a configuration file
-logging.basicConfig(level=logging.DEBUG)
+log_level = logging.DEBUG
 donations_filepath = os.path.join('data', 'donorschoose.org', 'Donations.csv')
 projects_filepath = os.path.join('data', 'donorschoose.org', 'Projects.csv')
 random_state_seed = 2718281828
 # Apply cleaning methods and sample the data as to reduce the amount of required memory
-sampling_methods = {'drop_raw_values': ['0. <= DonationAmount <= 2.'], 'remove_duplicate_ratings': True, 'user_frequency_boundary': 2, 'sample': int(1e4)}
+sampling_methods = {'drop_raw_values': ['0. <= DonationAmount <= 2.'],
+    'frequency_boundaries': [('DonorID', 2), ('ProjectID', 2)],
+    'sample': int(1e4)}
 n_jobs = 2
 n_folds = 5
 algorithms_args = {'SciPy-SVD': {'n_components': 100},
@@ -29,52 +31,53 @@ algorithms_args = {'SciPy-SVD': {'n_components': 100},
     'SPL-SVD': {},
     'SPL-SVDpp': {},
     'SPL-NMF': {},
-    'SPL-KNNWithMeans': {},
-    'SPL-KNNBasic': {},
-    'SPL-KNNWithZScore': {},
-    'SPL-KNNBaseline': {},
+    'SPL-KNNWithMeans': {'verbose': False},
+    'SPL-KNNBasic': {'verbose': False},
+    'SPL-KNNWithZScore': {'verbose': False},
+    'SPL-KNNBaseline': {'verbose': False},
     'SPL-NormalPredictor': {},
     'SPL-CoClustering': {},
     'SPL-SlopeOne': {}}
 rating_scores = np.arange(1., 6.)
 # Cut only on the given quantile range to mitigate the effect of outliers and append the bottom and top to the first respectively last bin afterwards
 rating_range_quantile = (0., 1. - 1e-2)
+
+logging.basicConfig(level=log_level)
 accuracy_methods = {'RMSE': recsys.rmse, 'MAE': recsys.mae}
-
-algorithms_name = set() # Keep track of the columns added to the dataframe
-# Constant values
-sampling_methods_priority = {'drop_raw_values': 200, 'remove_duplicate_ratings': 300, 'user_frequency_boundary': 500, 'sample': 900}
-
 # Implicitly rely on other commands using the current random state from numpy
 np.random.seed(random_state_seed)
 
 donations = pd.read_csv(donations_filepath)
 projects = pd.read_csv(projects_filepath)
-# Get rid of pesky whitespaces in column names
+# Get rid of pesky whitespaces in column names (pandas' query convenience function e.g. is allergic to them)
 donations.columns = donations.columns.str.replace(' ', '')
 projects.columns = projects.columns.str.replace(' ', '')
 
-items = pd.merge(donations[['ProjectID', 'DonorID', 'DonationAmount']], projects[['ProjectID', 'SchoolID']], on='ProjectID', how='inner', sort=False)
+# Sum up duplicate donations unconditionally; Hence do not try to predict projects which the donor has already donated to
+items = donations.groupby(['DonorID', 'ProjectID'])['DonationAmount'].sum().reset_index()
 
 # Apply the cleaning and sampling operations in a fixed order independently of the order of the dict or the user's choice
+sampling_methods_priority = {'drop_raw_values': 200, 'frequency_boundaries': 500, 'sample': 900}
 for method, opt in sorted(sampling_methods.items(), key=lambda x: sampling_methods_priority[x[0]]):
     if opt is None or opt is False:
         pass
     elif method == 'drop_raw_values':
         for drop_query in opt:
             items = items.drop(items.query(drop_query).index)
-    elif method == 'remove_duplicate_ratings':
-        items = items.drop_duplicates(['DonorID', 'SchoolID'], keep='first')
-    elif method == 'user_frequency_boundary':
-        value_counts = items['DonorID'].value_counts()
-        items = items[items['DonorID'].isin(value_counts.index[value_counts >= opt])]
-        del value_counts
+    elif method == 'frequency_boundaries':
+        # Ensure all conditions are met at the same time; Select the intersection
+        sel = True
+        for column, bound in opt:
+            value_counts = items[column].value_counts()
+            sel = sel & items[column].isin(value_counts.index[value_counts >= bound])
+
+        items = items[sel]
     elif method == 'sample':
         items = items.sample(n=opt)
     else:
         raise ValueError('Expected a valid sampling method from ' + str(sampling_methods_priority.keys()) + ', got "' + str(method) + '"')
 
-logging.debug('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(items['DonorID'].unique().shape[0], items['ProjectID'].unique().shape[0], items['SchoolID'].unique().shape[0]))
+logging.debug('{:d} unique donors donated to {:d} unique projects'.format(items['DonorID'].unique().shape[0], items['ProjectID'].unique().shape[0]))
 # Convert DonationAmount into a rating
 rating_bins = np.logspace(*np.log10(items['DonationAmount'].quantile(rating_range_quantile).values), num=len(rating_scores) + 1)
 rating_bins[0], rating_bins[-1] = items['DonationAmount'].min(), items['DonationAmount'].max()
@@ -82,10 +85,10 @@ items['DonationAmount'] = pd.cut(items['DonationAmount'], bins=rating_bins, incl
 
 # Create a sparse matrix for further analysis
 user_ids = items['DonorID'].unique()
-item_ids = items['SchoolID'].unique()
+item_ids = items['ProjectID'].unique()
 ratings = items['DonationAmount'].values
 row = items['DonorID'].astype(pd.api.types.CategoricalDtype(categories=user_ids)).cat.codes
-col = items['SchoolID'].astype(pd.api.types.CategoricalDtype(categories=item_ids)).cat.codes
+col = items['ProjectID'].astype(pd.api.types.CategoricalDtype(categories=item_ids)).cat.codes
 # Utilize a Compressed Sparse Row matrix as most users merely donate once or twice
 sparse_rating_matrix = csr_matrix((ratings, (row, col)), shape=(user_ids.shape[0], item_ids.shape[0]))
 
@@ -100,9 +103,9 @@ for baseline_name, baseline_val in [('zero', np.zeros(sparse_rating_matrix.data.
 
     logging.debug(log_line)
 
-kf = KFold(n_splits=n_folds, shuffle=True)
+# Keep track of the columns added to the dataframe
+algorithms_name = set()
 
-i = 0
 sci_algorithms = {}
 sci_algorithms['SciPy-SVD'] = recsys.SciPySVD(**algorithms_args['SciPy-SVD'])
 sci_algorithms['SKLearn-SVD'] = recsys.SKLearnSVD(**algorithms_args['SKLearn-SVD'])
@@ -115,6 +118,9 @@ for alg_name in sci_algorithms.keys():
     # Tuple of training error and test error for each algorithm
     algorithms_error[alg_name] = {acc_name: np.array([0., 0.]) for acc_name in accuracy_methods.keys()}
 
+kf = KFold(n_splits=n_folds, shuffle=True)
+
+i = 0
 # The ordering the indices of the matrix and the user_ids, item_ids of the frame must match in order to merge the prediction back into the table
 # By default the created sparse matrix has sorted indices. However, act with caution when working with subsets of the matrix!
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
@@ -129,8 +135,8 @@ for train_idx, test_idx in kf.split(sparse_rating_matrix):
         user_merge_idx, item_merge_idx = sparse_rating_matrix.nonzero()
         merge_users = np.isin(user_merge_idx, test_idx)  # The test_idx is a subset of the rows of the matrix
         user_merge_idx, item_merge_idx = user_merge_idx[merge_users], item_merge_idx[merge_users]
-        items_prediction = pd.DataFrame({'Prediction' + alg_name: np.asarray(test_predictions[sparse_rating_matrix[test_idx].sorted_indices().nonzero()]).flatten(), 'DonorID': user_ids[user_merge_idx], 'SchoolID': item_ids[item_merge_idx]})
-        items = pd.merge(items, items_prediction, on=['DonorID', 'SchoolID'], how='left', suffixes=('_x', '_y'), sort=False)
+        items_prediction = pd.DataFrame({'Prediction' + alg_name: np.asarray(test_predictions[sparse_rating_matrix[test_idx].sorted_indices().nonzero()]).flatten(), 'DonorID': user_ids[user_merge_idx], 'ProjectID': item_ids[item_merge_idx]})
+        items = pd.merge(items, items_prediction, on=['DonorID', 'ProjectID'], how='left', suffixes=('_x', '_y'), sort=False)
         # Add predictions (NaN is treated as zero here) and remove separate results if necessary
         if 'Prediction' + alg_name + '_x' in items.columns and 'Prediction' + alg_name + '_y' in items.columns:
             items['Prediction' + alg_name] = items[['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y']].sum(axis=1)
@@ -165,16 +171,16 @@ algorithms_name.update(spl_algorithms.keys())
 
 # Read data into scikit-surprise respectively surpriselib
 spl_reader = spl_Reader(line_format='user item rating', rating_scale=(int(rating_scores.min()), int(rating_scores.max())))
-spl_items = spl.Dataset.load_from_df(items[['DonorID', 'SchoolID', 'DonationAmount']], spl_reader)
+spl_items = spl.Dataset.load_from_df(items[['DonorID', 'ProjectID', 'DonationAmount']], spl_reader)
 
 spl_kf = spl_KFold(n_splits=n_folds, shuffle=True)
 for spl_train, spl_test in spl_kf.split(spl_items):
     for alg_name, alg in sorted(spl_algorithms.items(), key=lambda x: x[0]):
         alg.fit(spl_train)
         # Test returns an object of type surprise.prediction_algorithms.predictions.Prediction
-        predictions = pd.DataFrame(alg.test(spl_test), columns=['DonorID', 'SchoolID', 'TrueRating', 'Prediction' + alg_name, 'RatingDetails'])
+        predictions = pd.DataFrame(alg.test(spl_test), columns=['DonorID', 'ProjectID', 'TrueRating', 'Prediction' + alg_name, 'RatingDetails'])
         # Merge the predicted rating into the dataframe
-        items = pd.merge(items, predictions[['DonorID', 'SchoolID', 'Prediction' + alg_name]], on=['DonorID', 'SchoolID'], how='left', suffixes=('_x', '_y'), sort=False)
+        items = pd.merge(items, predictions[['DonorID', 'ProjectID', 'Prediction' + alg_name]], on=['DonorID', 'ProjectID'], how='left', suffixes=('_x', '_y'), sort=False)
         if 'Prediction' + alg_name + '_x' in items.columns and 'Prediction' + alg_name + '_y' in items.columns:
             items['Prediction' + alg_name] = items[['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y']].sum(axis=1)
             items = items.drop(['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y'], axis=1)

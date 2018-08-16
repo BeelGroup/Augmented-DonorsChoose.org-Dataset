@@ -21,15 +21,27 @@ random_state_seed = 2718281828
 # Apply cleaning methods and sample the data as to reduce the amount of required memory
 sampling_methods = {'drop_raw_values': ['0. <= DonationAmount <= 2.'], 'remove_duplicate_ratings': True, 'user_frequency_boundary': 2, 'sample': int(1e4)}
 n_jobs = 2
-n_svd_components = 100
-n_knn_neighbors = 40
-n_nmf_components = 50
 n_folds = 5
+algorithms_args = {'SciPy-SVD': {'n_components': 100},
+    'SKLearn-SVD': {'n_components': 100},
+    'SKLearn-KNN': {'n_neighbors': 40},
+    'SKLearn-NMF': {'n_components': 50},
+    'SPL-SVD': {},
+    'SPL-SVDpp': {},
+    'SPL-NMF': {},
+    'SPL-KNNWithMeans': {},
+    'SPL-KNNBasic': {},
+    'SPL-KNNWithZScore': {},
+    'SPL-KNNBaseline': {},
+    'SPL-NormalPredictor': {},
+    'SPL-CoClustering': {},
+    'SPL-SlopeOne': {}}
 rating_scores = np.arange(1., 6.)
 # Cut only on the given quantile range to mitigate the effect of outliers and append the bottom and top to the first respectively last bin afterwards
 rating_range_quantile = (0., 1. - 1e-2)
 accuracy_methods = {'RMSE': recsys.rmse, 'MAE': recsys.mae}
 
+algorithms_name = set() # Keep track of the columns added to the dataframe
 # Constant values
 sampling_methods_priority = {'drop_raw_values': 200, 'remove_duplicate_ratings': 300, 'user_frequency_boundary': 500, 'sample': 900}
 
@@ -91,14 +103,15 @@ for baseline_name, baseline_val in [('zero', np.zeros(sparse_rating_matrix.data.
 kf = KFold(n_splits=n_folds, shuffle=True)
 
 i = 0
-algorithms = {}
-algorithms['SciPy-SVD'] = recsys.SciPySVD(n_components=n_svd_components)
-algorithms['SKLearn-SVD'] = recsys.SKLearnSVD(n_components=n_svd_components)
-algorithms['SKLearn-KNN'] = recsys.SKLearnKNN(n_neighbors=n_knn_neighbors)
-algorithms['SKLearn-NMF'] = recsys.SKLearnNMF(n_components=n_nmf_components)
+sci_algorithms = {}
+sci_algorithms['SciPy-SVD'] = recsys.SciPySVD(**algorithms_args['SciPy-SVD'])
+sci_algorithms['SKLearn-SVD'] = recsys.SKLearnSVD(**algorithms_args['SKLearn-SVD'])
+sci_algorithms['SKLearn-KNN'] = recsys.SKLearnKNN(**algorithms_args['SKLearn-KNN'])
+sci_algorithms['SKLearn-NMF'] = recsys.SKLearnNMF(**algorithms_args['SKLearn-NMF'])
+algorithms_name.update(sci_algorithms.keys())
 # Initialize a dictionary with an entry for each algorithm which shall store accuracy values for every selected accuracy method
 algorithms_error = {}
-for alg_name in algorithms.keys():
+for alg_name in sci_algorithms.keys():
     # Tuple of training error and test error for each algorithm
     algorithms_error[alg_name] = {acc_name: np.array([0., 0.]) for acc_name in accuracy_methods.keys()}
 
@@ -107,7 +120,7 @@ for alg_name in algorithms.keys():
 for train_idx, test_idx in kf.split(sparse_rating_matrix):
     i += 1
 
-    for alg_name, alg in sorted(algorithms.items(), key=lambda x: x[0]):  # Predictable algorithm order for reproducibility
+    for alg_name, alg in sorted(sci_algorithms.items(), key=lambda x: x[0]):  # Predictable algorithm order for reproducibility
         log_line = '{:<15s} (fold {:>d}/{:<d}) ::'.format(alg_name, i, n_folds)
         train_predictions = alg.fit_transform(sparse_rating_matrix[train_idx].sorted_indices())
         test_predictions = alg.estimate(sparse_rating_matrix[test_idx].sorted_indices())
@@ -134,19 +147,21 @@ for alg_name, acc_methods in sorted(algorithms_error.items(), key=lambda x: x[0]
     log_line = '{:<15s} (average) ::'.format(alg_name)
     for acc_name, acc_value in sorted(acc_methods.items(), key=lambda x: x[0]):
         log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=acc_value[0], test_acc=acc_value[1])
+
     logging.info(log_line)
 
 spl_algorithms = {}
-spl_algorithms['SPL-SVD'] = spl.SVD()
-spl_algorithms['SPL-SVDpp'] =  spl.SVDpp()
-spl_algorithms['SPL-NMF'] = spl.NMF()
-spl_algorithms['SPL-KNNWithMeans'] = spl.KNNWithMeans()
-spl_algorithms['SPL-KNNBasic'] = spl.KNNBasic()
-spl_algorithms['SPL-KNNWithZScore'] = spl.KNNWithZScore()
-spl_algorithms['SPL-KNNBaseline'] = spl.KNNBaseline()
-spl_algorithms['SPL-NormalPredictor'] = spl.NormalPredictor()
-spl_algorithms['SPL-CoClustering'] = spl.CoClustering()
-spl_algorithms['SPL-SlopeOne'] = spl.SlopeOne()
+spl_algorithms['SPL-SVD'] = spl.SVD(**algorithms_args['SPL-SVD'])
+spl_algorithms['SPL-SVDpp'] = spl.SVDpp(**algorithms_args['SPL-SVDpp'])
+spl_algorithms['SPL-NMF'] = spl.NMF(**algorithms_args['SPL-NMF'])
+spl_algorithms['SPL-KNNWithMeans'] = spl.KNNWithMeans(**algorithms_args['SPL-KNNWithMeans'])
+spl_algorithms['SPL-KNNBasic'] = spl.KNNBasic(**algorithms_args['SPL-KNNBasic'])
+spl_algorithms['SPL-KNNWithZScore'] = spl.KNNWithZScore(**algorithms_args['SPL-KNNWithZScore'])
+spl_algorithms['SPL-KNNBaseline'] = spl.KNNBaseline(**algorithms_args['SPL-KNNBaseline'])
+spl_algorithms['SPL-NormalPredictor'] = spl.NormalPredictor(**algorithms_args['SPL-NormalPredictor'])
+spl_algorithms['SPL-CoClustering'] = spl.CoClustering(**algorithms_args['SPL-CoClustering'])
+spl_algorithms['SPL-SlopeOne'] = spl.SlopeOne(**algorithms_args['SPL-SlopeOne'])
+algorithms_name.update(spl_algorithms.keys())
 
 # Read data into scikit-surprise respectively surpriselib
 spl_reader = spl_Reader(line_format='user item rating', rating_scale=(int(rating_scores.min()), int(rating_scores.max())))
@@ -163,3 +178,12 @@ for spl_train, spl_test in spl_kf.split(spl_items):
         if 'Prediction' + alg_name + '_x' in items.columns and 'Prediction' + alg_name + '_y' in items.columns:
             items['Prediction' + alg_name] = items[['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y']].sum(axis=1)
             items = items.drop(['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y'], axis=1)
+
+# Overall accuracy
+for alg_name in sorted(algorithms_name):
+    log_line = '{:<20s} (overall) ::'.format(alg_name)
+    for acc_name, acc in sorted(accuracy_methods.items(), key=lambda x: x[0]):
+            overall_acc = acc(items['Prediction' + alg_name].values, np.asarray(items['DonationAmount']))
+            log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
+
+    logging.info(log_line)

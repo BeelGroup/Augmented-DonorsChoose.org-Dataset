@@ -14,7 +14,7 @@ from surprise.reader import Reader as spl_Reader
 import recsys
 
 # Constant variables which might be worth reading in from a configuration file
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 donations_filepath = os.path.join('data', 'donorschoose.org', 'Donations.csv')
 projects_filepath = os.path.join('data', 'donorschoose.org', 'Projects.csv')
 random_state_seed = 2718281828
@@ -74,7 +74,7 @@ for method, opt in sorted(sampling_methods.items(), key=lambda x: sampling_metho
     else:
         raise ValueError('Expected a valid sampling method from ' + str(sampling_methods_priority.keys()) + ', got "' + str(method) + '"')
 
-logging.info('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(items['DonorID'].unique().shape[0], items['ProjectID'].unique().shape[0], items['SchoolID'].unique().shape[0]))
+logging.debug('{:d} unique donors donated to {:d} unique projects respectively {:d} unique schools'.format(items['DonorID'].unique().shape[0], items['ProjectID'].unique().shape[0], items['SchoolID'].unique().shape[0]))
 # Convert DonationAmount into a rating
 rating_bins = np.logspace(*np.log10(items['DonationAmount'].quantile(rating_range_quantile).values), num=len(rating_scores) + 1)
 rating_bins[0], rating_bins[-1] = items['DonationAmount'].min(), items['DonationAmount'].max()
@@ -90,7 +90,7 @@ col = items['SchoolID'].astype(pd.api.types.CategoricalDtype(categories=item_ids
 sparse_rating_matrix = csr_matrix((ratings, (row, col)), shape=(user_ids.shape[0], item_ids.shape[0]))
 
 sparsity = 1.0 - sparse_rating_matrix.nonzero()[0].shape[0] / np.dot(*sparse_rating_matrix.shape)
-logging.info('rating matrix is {:.4%} sparse'.format(sparsity))
+logging.debug('rating matrix is {:.4%} sparse'.format(sparsity))
 
 for baseline_name, baseline_val in [('zero', np.zeros(sparse_rating_matrix.data.shape[0])), ('mean', np.full(sparse_rating_matrix.data.shape[0], sparse_rating_matrix.data.mean())), ('random', np.random.uniform(low=min(rating_scores), high=max(rating_scores), size=sparse_rating_matrix.data.shape[0]))]:
     log_line = '{:<8s} ::'.format(baseline_name)
@@ -98,7 +98,7 @@ for baseline_name, baseline_val in [('zero', np.zeros(sparse_rating_matrix.data.
         overall_acc = acc(baseline_val, sparse_rating_matrix)
         log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
 
-    logging.info(log_line)
+    logging.debug(log_line)
 
 kf = KFold(n_splits=n_folds, shuffle=True)
 
@@ -141,14 +141,14 @@ for train_idx, test_idx in kf.split(sparse_rating_matrix):
             algorithms_error[alg_name][acc_name] += np.array([train_acc, test_acc]) / n_folds
             log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=train_acc, test_acc=test_acc)
 
-        logging.info(log_line)
+        logging.debug(log_line)
 
 for alg_name, acc_methods in sorted(algorithms_error.items(), key=lambda x: x[0]):
     log_line = '{:<15s} (average) ::'.format(alg_name)
     for acc_name, acc_value in sorted(acc_methods.items(), key=lambda x: x[0]):
         log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=acc_value[0], test_acc=acc_value[1])
 
-    logging.info(log_line)
+    logging.debug(log_line)
 
 spl_algorithms = {}
 spl_algorithms['SPL-SVD'] = spl.SVD(**algorithms_args['SPL-SVD'])

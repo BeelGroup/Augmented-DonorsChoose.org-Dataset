@@ -6,6 +6,7 @@ import os
 import numpy as np
 import pandas as pd
 import surprise as spl
+import yaml
 from scipy.sparse import csr_matrix
 from sklearn.model_selection import KFold
 from surprise.model_selection import KFold as spl_KFold
@@ -13,34 +14,19 @@ from surprise.reader import Reader as spl_Reader
 
 import recsys
 
-# Constant variables which might be worth reading in from a configuration file
-log_level = logging.DEBUG
-donations_filepath = os.path.join('data', 'donorschoose.org', 'Donations.csv')
-projects_filepath = os.path.join('data', 'donorschoose.org', 'Projects.csv')
-random_state_seed = 2718281828
-# Apply cleaning methods and sample the data as to reduce the amount of required memory
-sampling_methods = {'drop_raw_values': ['0. <= DonationAmount <= 2.'],
-    'frequency_boundaries': [('DonorID', 2), ('ProjectID', 2)],
-    'sample': int(1e4)}
-n_jobs = 2
-n_folds = 5
-algorithms_args = {'SciPy-SVD': {'n_components': 100},
-    'SKLearn-SVD': {'n_components': 100},
-    'SKLearn-KNN': {'n_neighbors': 40},
-    'SKLearn-NMF': {'n_components': 50},
-    'SPL-SVD': {},
-    'SPL-SVDpp': {},
-    'SPL-NMF': {},
-    'SPL-KNNWithMeans': {'verbose': False},
-    'SPL-KNNBasic': {'verbose': False},
-    'SPL-KNNWithZScore': {'verbose': False},
-    'SPL-KNNBaseline': {'verbose': False},
-    'SPL-NormalPredictor': {},
-    'SPL-CoClustering': {},
-    'SPL-SlopeOne': {}}
-rating_scores = np.arange(1., 6.)
-# Cut only on the given quantile range to mitigate the effect of outliers and append the bottom and top to the first respectively last bin afterwards
-rating_range_quantile = (0., 1. - 1e-2)
+with open('config.yml', 'r') as stream:
+    config = yaml.load(stream)
+
+# Read in all the configuration once instead of possibly failing later because of missing values
+log_level = config['log_level']
+donations_filepath = config['donations_filepath']
+projects_filepath = config['projects_filepath']
+random_state_seed = config['random_state_seed']
+sampling_methods = config['sampling_methods']
+n_folds = config['n_folds']
+algorithms_args = config['algorithms_args']
+rating_scores = config['rating_scores']
+rating_range_quantile = config['rating_range_quantile']
 
 logging.basicConfig(level=log_level)
 accuracy_methods = {'RMSE': recsys.rmse, 'MAE': recsys.mae}

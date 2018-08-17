@@ -81,7 +81,7 @@ logging.debug('{:d} unique donors donated to {:d} unique projects'.format(items[
 # Convert DonationAmount into a rating
 rating_bins = np.logspace(*np.log10(items['DonationAmount'].quantile(rating_range_quantile).values), num=len(rating_scores) + 1)
 rating_bins[0], rating_bins[-1] = items['DonationAmount'].min(), items['DonationAmount'].max()
-items['DonationAmount'] = pd.cut(items['DonationAmount'], bins=rating_bins, include_lowest=True, labels=rating_scores, retbins=False)
+items['DonationAmount'] = pd.cut(items['DonationAmount'], bins=rating_bins, include_lowest=True, labels=rating_scores, retbins=False).astype(np.float)
 
 # Create a sparse matrix for further analysis
 user_ids = items['DonorID'].unique()
@@ -170,7 +170,7 @@ spl_algorithms['SPL-SlopeOne'] = spl.SlopeOne(**algorithms_args['SPL-SlopeOne'])
 algorithms_name.update(spl_algorithms.keys())
 
 # Read data into scikit-surprise respectively surpriselib
-spl_reader = spl_Reader(line_format='user item rating', rating_scale=(int(rating_scores.min()), int(rating_scores.max())))
+spl_reader = spl_Reader(line_format='user item rating', rating_scale=(int(min(rating_scores)), int(max(rating_scores))))
 spl_items = spl.Dataset.load_from_df(items[['DonorID', 'ProjectID', 'DonationAmount']], spl_reader)
 
 spl_kf = spl_KFold(n_splits=n_folds, shuffle=True)

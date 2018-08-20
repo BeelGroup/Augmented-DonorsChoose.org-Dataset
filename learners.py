@@ -51,15 +51,23 @@ for method, opt in sorted(sampling_methods.items(), key=lambda x: sampling_metho
         for drop_query in opt:
             items = items.drop(items.query(drop_query).index)
     elif method == 'frequency_boundaries':
-        # Ensure all conditions are met at the same time; Select the intersection
-        sel = True
+        # Note, this does not ensure that several conditions are met at the same time; Just selecting the intersection is not a solution!
         for column, bound in opt:
             value_counts = items[column].value_counts()
-            sel = sel & items[column].isin(value_counts.index[value_counts >= bound])
-
-        items = items[sel]
+            items = items[items[column].isin(value_counts.index[value_counts >= bound])]
     elif method == 'sample':
-        items = items.sample(n=opt)
+        # In case a frequency boundary is selected, ensure that the last condition is met in the sampled data; Thereby sample at least as many as specified but possibly more items
+        if 'frequency_boundaries' in sampling_methods.keys() and len(sampling_methods['frequency_boundaries']) > 0:
+            column, bound = sampling_methods['frequency_boundaries'][-1]
+            value_counts = items[column].value_counts(sort=False).sample(frac=1.)
+
+            selection_limit = 1
+            while value_counts.iloc[:selection_limit].sum() < opt:
+                selection_limit += 1
+
+            items = items[items[column].isin(value_counts.iloc[:selection_limit].index)]
+        else:
+            items = items.sample(n=opt)
     else:
         raise ValueError('Expected a valid sampling method from ' + str(sampling_methods_priority.keys()) + ', got "' + str(method) + '"')
 

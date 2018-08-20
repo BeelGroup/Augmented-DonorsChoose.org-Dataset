@@ -7,8 +7,9 @@ sampling_methods:
     drop_raw_values:
         - '0. <= DonationAmount <= 2.'
     frequency_boundaries:
-        - ['DonorID', 2]
+        # Conditions must not be met at the same time; though, the last one will always hold
         - ['ProjectID', 2]
+        - ['DonorID', 2]
     sample: 10000
 n_folds: 5
 algorithms_args:

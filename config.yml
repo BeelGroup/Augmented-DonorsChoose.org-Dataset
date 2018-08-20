@@ -8,7 +8,6 @@ sampling_methods:
         - '0. <= DonationAmount <= 2.'
     frequency_boundaries:
         # Conditions must not be met at the same time; though, the last one will always hold
-        - ['ProjectID', 2]
         - ['DonorID', 2]
     sample: 10000
 n_folds: 5

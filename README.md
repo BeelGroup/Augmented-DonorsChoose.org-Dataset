@@ -76,3 +76,24 @@ plt.tight_layout()
 plt.savefig('DonationAmount - Distribution of Ratings for logarithmic bins and excluded outliers.pdf')
 plt.close()
 ```
+
+* Visualizing the RMSE
+
+```python
+plt.figure()
+plt.grid(b=False, axis='x')
+
+plt.errorbar(np.arange(7), [3.26, 1.05, 1.56, 3.13, 3.26, 3.26, 3.26], xerr=0.45, markersize=0., ls='none', label='Test')
+plt.errorbar(np.arange(4, 7), [3.21, 3.18, 3.19], xerr=0.45, markersize=0., ls='none', label='Train')
+
+plt.xticks(np.arange(7), ['zero', 'mean', 'random', 'SKLearn-KNN', 'SKLearn-NMF', 'SKLearn-SVD', 'SciPy-SVD'])
+plt.gcf().autofmt_xdate()
+
+plt.xlabel('Algorithm')
+plt.ylabel('RMSE')
+plt.tight_layout()
+plt.legend(loc=4)
+
+plt.savefig('Collaborative Filters - RMSE for DIY algorithms and some baselines.pdf')
+plt.close()
+```

@@ -2,6 +2,8 @@ log_level: 10
 donations_filepath: data/donorschoose.org/Donations.csv
 projects_filepath: data/donorschoose.org/Projects.csv
 random_state_seed: 2718281828
+# Constant for the top-N accuracy metrics
+n_random_non_interacted_items: 100
 # Apply cleaning methods and sample the data as to reduce the amount of required memory
 sampling_methods:
     drop_raw_values:
@@ -34,6 +36,13 @@ algorithms_args:
     SPL-NormalPredictor: {}
     SPL-CoClustering: {}
     SPL-SlopeOne: {}
+    SKLearn-TfidfVectorizer:
+        analyzer: 'word'
+        ngram_range: [1, 2]
+        stop_words: 'english'
+        lowercase: True
+        max_df: 0.9
+        max_features: 5000
 rating_scores: [1, 2, 3, 4, 5]
 # Cut only on the given quantile range to mitigate the effect of outliers and append the bottom and top to the first respectively last bin afterwards
 rating_range_quantile: [0., 0.99]

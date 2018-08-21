@@ -8,7 +8,9 @@ import pandas as pd
 import surprise as spl
 import yaml
 from scipy.sparse import csr_matrix
-from sklearn.model_selection import KFold
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.metrics.pairwise import cosine_similarity
+from sklearn.model_selection import KFold, LeaveOneOut
 from surprise.model_selection import KFold as spl_KFold
 from surprise.reader import Reader as spl_Reader
 
@@ -22,6 +24,7 @@ log_level = config['log_level']
 donations_filepath = config['donations_filepath']
 projects_filepath = config['projects_filepath']
 random_state_seed = config['random_state_seed']
+n_random_non_interacted_items =  config['n_random_non_interacted_items']
 sampling_methods = config['sampling_methods']
 n_folds = config['n_folds']
 algorithms_args = config['algorithms_args']
@@ -38,6 +41,8 @@ projects = pd.read_csv(projects_filepath)
 # Get rid of pesky whitespaces in column names (pandas' query convenience function e.g. is allergic to them)
 donations.columns = donations.columns.str.replace(' ', '')
 projects.columns = projects.columns.str.replace(' ', '')
+# Unconditionally drop donations which have no associated project (why do those kind or transations even exist?!)
+donations = donations[donations['ProjectID'].isin(projects['ProjectID'])]
 
 # Sum up duplicate donations unconditionally; Hence do not try to predict projects which the donor has already donated to
 items = donations.groupby(['DonorID', 'ProjectID'])['DonationAmount'].sum().reset_index()
@@ -187,3 +192,46 @@ for alg_name in sorted(algorithms_name):
             log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
 
     logging.info(log_line)
+
+# Select only those items which were previously used for the collaborative filtering approach
+ctb_items = projects[projects['ProjectID'].isin(items['ProjectID'])].fillna('')
+ctb_items['ProjectText'] = ctb_items['ProjectTitle'] + ' ' + ctb_items['ProjectShortDescription'] + ' ' + ctb_items['ProjectNeedStatement'] + ' ' + ctb_items['ProjectEssay']
+ctb_items = ctb_items[['ProjectID', 'ProjectText']]
+
+ctb_algorithms = {}
+ctb_algorithms['SKLearn-TfidfVectorizer'] = TfidfVectorizer(**algorithms_args['SKLearn-TfidfVectorizer'])
+algorithms_name.update(ctb_algorithms.keys())
+
+alg_name, alg = 'SKLearn-TfidfVectorizer', ctb_algorithms['SKLearn-TfidfVectorizer']
+
+ctb_item_ids = ctb_items['ProjectID'].values
+tfidf_matrix = alg.fit_transform(ctb_items['ProjectText'])
+# One may pretty print actual words/n-grams instead of positions in arrays using `tfidf_feature_names = alg.get_feature_names()`
+
+items['RecallAtPosition' + alg_name] = np.nan
+loo = LeaveOneOut()
+for user in items['DonorID'].unique(): # This loop is computationally expensive
+    user_items = items[items['DonorID'] == user]
+    user_item_idx = np.isin(ctb_item_ids, user_items['ProjectID'])
+    user_features = tfidf_matrix[user_item_idx]
+
+    # Single out one interacted item to use for testing using integer indices
+    for train_user_features_idx, test_user_features_idx in loo.split(user_features):
+        test_user_feature = user_items['ProjectID'].iloc[test_user_features_idx].values
+
+        # Multiply each item's feature with the user's rating of the item and divide the result by the sum of all ratings made by the user
+        ctb_train_users_profiles = user_features[train_user_features_idx].transpose().dot(user_items['DonationAmount'].iloc[train_user_features_idx].values)
+        ctb_train_users_profiles = ctb_train_users_profiles / user_items['DonationAmount'].iloc[train_user_features_idx].sum()
+
+        # Create an array of items which the user has not interacted with yet plus one with which an interaction took place
+        non_rated_user_items_ids = np.setdiff1d(ctb_item_ids, user_items['ProjectID'])
+        top_test_choice = np.append(np.random.choice(np.array(non_rated_user_items_ids), n_random_non_interacted_items), test_user_feature)
+        top_test_idx = np.isin(ctb_item_ids, top_test_choice)
+
+        # Calculate the similarity and retrieve the position of the test id within the recommended set
+        cosine_similarities = cosine_similarity(ctb_train_users_profiles.reshape(1, -1), tfidf_matrix[top_test_idx]).flatten()
+        sorted_similarities_indices = (-1 * cosine_similarities).argsort()
+        sorted_item_ids = ctb_item_ids[top_test_idx][sorted_similarities_indices]
+        pos = np.where(sorted_item_ids == test_user_feature[0])[0][0]
+
+        items.at[(items['DonorID'] == user) & (items['ProjectID'] == test_user_feature[0]), 'RecallAtPosition' + alg_name] = pos

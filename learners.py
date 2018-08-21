@@ -7,12 +7,6 @@ import numpy as np
 import pandas as pd
 import surprise as spl
 import yaml
-from scipy.sparse import csr_matrix
-from sklearn.feature_extraction.text import TfidfVectorizer
-from sklearn.metrics.pairwise import cosine_similarity
-from sklearn.model_selection import KFold, LeaveOneOut
-from surprise.model_selection import KFold as spl_KFold
-from surprise.reader import Reader as spl_Reader
 
 import recsys
 
@@ -82,156 +76,12 @@ rating_bins = np.logspace(*np.log10(items['DonationAmount'].quantile(rating_rang
 rating_bins[0], rating_bins[-1] = items['DonationAmount'].min(), items['DonationAmount'].max()
 items['DonationAmount'] = pd.cut(items['DonationAmount'], bins=rating_bins, include_lowest=True, labels=rating_scores, retbins=False).astype(np.float)
 
-# Create a sparse matrix for further analysis
-user_ids = items['DonorID'].unique()
-item_ids = items['ProjectID'].unique()
-ratings = items['DonationAmount'].values
-row = items['DonorID'].astype(pd.api.types.CategoricalDtype(categories=user_ids)).cat.codes
-col = items['ProjectID'].astype(pd.api.types.CategoricalDtype(categories=item_ids)).cat.codes
-# Utilize a Compressed Sparse Row matrix as most users merely donate once or twice
-sparse_rating_matrix = csr_matrix((ratings, (row, col)), shape=(user_ids.shape[0], item_ids.shape[0]))
-
-sparsity = 1.0 - sparse_rating_matrix.nonzero()[0].shape[0] / np.dot(*sparse_rating_matrix.shape)
-logging.debug('rating matrix is {:.4%} sparse'.format(sparsity))
-
-for baseline_name, baseline_val in [('zero', np.zeros(sparse_rating_matrix.data.shape[0])), ('mean', np.full(sparse_rating_matrix.data.shape[0], sparse_rating_matrix.data.mean())), ('random', np.random.uniform(low=min(rating_scores), high=max(rating_scores), size=sparse_rating_matrix.data.shape[0]))]:
-    log_line = '{:<8s} ::'.format(baseline_name)
-    for acc_name, acc in sorted(accuracy_methods.items(), key=lambda x: x[0]):  # Predictable algorithm order for pretty printing
-        overall_acc = acc(baseline_val, sparse_rating_matrix)
-        log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
-
-    logging.debug(log_line)
-
-# Keep track of the columns added to the dataframe
 algorithms_name = set()
 
-sci_algorithms = {}
-sci_algorithms['SciPy-SVD'] = recsys.SciPySVD(**algorithms_args['SciPy-SVD'])
-sci_algorithms['SKLearn-SVD'] = recsys.SKLearnSVD(**algorithms_args['SKLearn-SVD'])
-sci_algorithms['SKLearn-KNN'] = recsys.SKLearnKNN(**algorithms_args['SKLearn-KNN'])
-sci_algorithms['SKLearn-NMF'] = recsys.SKLearnNMF(**algorithms_args['SKLearn-NMF'])
-algorithms_name.update(sci_algorithms.keys())
-# Initialize a dictionary with an entry for each algorithm which shall store accuracy values for every selected accuracy method
-algorithms_error = {}
-for alg_name in sci_algorithms.keys():
-    # Tuple of training error and test error for each algorithm
-    algorithms_error[alg_name] = {acc_name: np.array([0., 0.]) for acc_name in accuracy_methods.keys()}
+collab_filters = recsys.CollaborativeFilters(items, ('DonorID', 'ProjectID', 'DonationAmount'), rating_scores=rating_scores, algorithms_args=algorithms_args, accuracy_methods=accuracy_methods, log_level=log_level)
+items = collab_filters.fit_all(n_folds=n_folds).items
+algorithms_name.update(collab_filters.algorithms_name)
 
-kf = KFold(n_splits=n_folds, shuffle=True)
-
-i = 0
-# The ordering the indices of the matrix and the user_ids, item_ids of the frame must match in order to merge the prediction back into the table
-# By default the created sparse matrix has sorted indices. However, act with caution when working with subsets of the matrix!
-for train_idx, test_idx in kf.split(sparse_rating_matrix):
-    i += 1
-
-    for alg_name, alg in sorted(sci_algorithms.items(), key=lambda x: x[0]):  # Predictable algorithm order for reproducibility
-        log_line = '{:<15s} (fold {:>d}/{:<d}) ::'.format(alg_name, i, n_folds)
-        train_predictions = alg.fit_transform(sparse_rating_matrix[train_idx].sorted_indices())
-        test_predictions = alg.estimate(sparse_rating_matrix[test_idx].sorted_indices())
-
-        # Extract the test predictions from the matrix by selecting the proper indices from the test_idx and the matrix
-        user_merge_idx, item_merge_idx = sparse_rating_matrix.nonzero()
-        merge_users = np.isin(user_merge_idx, test_idx)  # The test_idx is a subset of the rows of the matrix
-        user_merge_idx, item_merge_idx = user_merge_idx[merge_users], item_merge_idx[merge_users]
-        items_prediction = pd.DataFrame({'Prediction' + alg_name: np.asarray(test_predictions[sparse_rating_matrix[test_idx].sorted_indices().nonzero()]).flatten(), 'DonorID': user_ids[user_merge_idx], 'ProjectID': item_ids[item_merge_idx]})
-        items = pd.merge(items, items_prediction, on=['DonorID', 'ProjectID'], how='left', suffixes=('_x', '_y'), sort=False)
-        # Add predictions (NaN is treated as zero here) and remove separate results if necessary
-        if 'Prediction' + alg_name + '_x' in items.columns and 'Prediction' + alg_name + '_y' in items.columns:
-            items['Prediction' + alg_name] = items[['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y']].sum(axis=1)
-            items = items.drop(['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y'], axis=1)
-
-        for acc_name, acc in sorted(accuracy_methods.items(), key=lambda x: x[0]):  # Predictable algorithm order for pretty printing
-            train_acc, test_acc = acc(train_predictions, sparse_rating_matrix[train_idx].sorted_indices()), acc(test_predictions, sparse_rating_matrix[test_idx].sorted_indices())
-            algorithms_error[alg_name][acc_name] += np.array([train_acc, test_acc]) / n_folds
-            log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=train_acc, test_acc=test_acc)
-
-        logging.debug(log_line)
-
-for alg_name, acc_methods in sorted(algorithms_error.items(), key=lambda x: x[0]):
-    log_line = '{:<15s} (average) ::'.format(alg_name)
-    for acc_name, acc_value in sorted(acc_methods.items(), key=lambda x: x[0]):
-        log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=acc_value[0], test_acc=acc_value[1])
-
-    logging.debug(log_line)
-
-spl_algorithms = {}
-spl_algorithms['SPL-SVD'] = spl.SVD(**algorithms_args['SPL-SVD'])
-spl_algorithms['SPL-SVDpp'] = spl.SVDpp(**algorithms_args['SPL-SVDpp'])
-spl_algorithms['SPL-NMF'] = spl.NMF(**algorithms_args['SPL-NMF'])
-spl_algorithms['SPL-KNNWithMeans'] = spl.KNNWithMeans(**algorithms_args['SPL-KNNWithMeans'])
-spl_algorithms['SPL-KNNBasic'] = spl.KNNBasic(**algorithms_args['SPL-KNNBasic'])
-spl_algorithms['SPL-KNNWithZScore'] = spl.KNNWithZScore(**algorithms_args['SPL-KNNWithZScore'])
-spl_algorithms['SPL-KNNBaseline'] = spl.KNNBaseline(**algorithms_args['SPL-KNNBaseline'])
-spl_algorithms['SPL-NormalPredictor'] = spl.NormalPredictor(**algorithms_args['SPL-NormalPredictor'])
-spl_algorithms['SPL-CoClustering'] = spl.CoClustering(**algorithms_args['SPL-CoClustering'])
-spl_algorithms['SPL-SlopeOne'] = spl.SlopeOne(**algorithms_args['SPL-SlopeOne'])
-algorithms_name.update(spl_algorithms.keys())
-
-# Read data into scikit-surprise respectively surpriselib
-spl_reader = spl_Reader(line_format='user item rating', rating_scale=(int(min(rating_scores)), int(max(rating_scores))))
-spl_items = spl.Dataset.load_from_df(items[['DonorID', 'ProjectID', 'DonationAmount']], spl_reader)
-
-spl_kf = spl_KFold(n_splits=n_folds, shuffle=True)
-for spl_train, spl_test in spl_kf.split(spl_items):
-    for alg_name, alg in sorted(spl_algorithms.items(), key=lambda x: x[0]):
-        alg.fit(spl_train)
-        # Test returns an object of type surprise.prediction_algorithms.predictions.Prediction
-        predictions = pd.DataFrame(alg.test(spl_test), columns=['DonorID', 'ProjectID', 'TrueRating', 'Prediction' + alg_name, 'RatingDetails'])
-        # Merge the predicted rating into the dataframe
-        items = pd.merge(items, predictions[['DonorID', 'ProjectID', 'Prediction' + alg_name]], on=['DonorID', 'ProjectID'], how='left', suffixes=('_x', '_y'), sort=False)
-        if 'Prediction' + alg_name + '_x' in items.columns and 'Prediction' + alg_name + '_y' in items.columns:
-            items['Prediction' + alg_name] = items[['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y']].sum(axis=1)
-            items = items.drop(['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y'], axis=1)
-
-# Overall accuracy
-for alg_name in sorted(algorithms_name):
-    log_line = '{:<20s} (overall) ::'.format(alg_name)
-    for acc_name, acc in sorted(accuracy_methods.items(), key=lambda x: x[0]):
-            overall_acc = acc(items['Prediction' + alg_name].values, np.asarray(items['DonationAmount']))
-            log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
-
-    logging.info(log_line)
-
-# Select only those items which were previously used for the collaborative filtering approach
-ctb_items = projects[projects['ProjectID'].isin(items['ProjectID'])].fillna('')
-ctb_items['ProjectText'] = ctb_items['ProjectTitle'] + ' ' + ctb_items['ProjectShortDescription'] + ' ' + ctb_items['ProjectNeedStatement'] + ' ' + ctb_items['ProjectEssay']
-ctb_items = ctb_items[['ProjectID', 'ProjectText']]
-
-ctb_algorithms = {}
-ctb_algorithms['SKLearn-TfidfVectorizer'] = TfidfVectorizer(**algorithms_args['SKLearn-TfidfVectorizer'])
-algorithms_name.update(ctb_algorithms.keys())
-
-alg_name, alg = 'SKLearn-TfidfVectorizer', ctb_algorithms['SKLearn-TfidfVectorizer']
-
-ctb_item_ids = ctb_items['ProjectID'].values
-tfidf_matrix = alg.fit_transform(ctb_items['ProjectText'])
-# One may pretty print actual words/n-grams instead of positions in arrays using `tfidf_feature_names = alg.get_feature_names()`
-
-items['RecallAtPosition' + alg_name] = np.nan
-loo = LeaveOneOut()
-for user in items['DonorID'].unique(): # This loop is computationally expensive
-    user_items = items[items['DonorID'] == user]
-    user_item_idx = np.isin(ctb_item_ids, user_items['ProjectID'])
-    user_features = tfidf_matrix[user_item_idx]
-
-    # Single out one interacted item to use for testing using integer indices
-    for train_user_features_idx, test_user_features_idx in loo.split(user_features):
-        test_user_feature = user_items['ProjectID'].iloc[test_user_features_idx].values
-
-        # Multiply each item's feature with the user's rating of the item and divide the result by the sum of all ratings made by the user
-        ctb_train_users_profiles = user_features[train_user_features_idx].transpose().dot(user_items['DonationAmount'].iloc[train_user_features_idx].values)
-        ctb_train_users_profiles = ctb_train_users_profiles / user_items['DonationAmount'].iloc[train_user_features_idx].sum()
-
-        # Create an array of items which the user has not interacted with yet plus one with which an interaction took place
-        non_rated_user_items_ids = np.setdiff1d(ctb_item_ids, user_items['ProjectID'])
-        top_test_choice = np.append(np.random.choice(np.array(non_rated_user_items_ids), n_random_non_interacted_items), test_user_feature)
-        top_test_idx = np.isin(ctb_item_ids, top_test_choice)
-
-        # Calculate the similarity and retrieve the position of the test id within the recommended set
-        cosine_similarities = cosine_similarity(ctb_train_users_profiles.reshape(1, -1), tfidf_matrix[top_test_idx]).flatten()
-        sorted_similarities_indices = (-1 * cosine_similarities).argsort()
-        sorted_item_ids = ctb_item_ids[top_test_idx][sorted_similarities_indices]
-        pos = np.where(sorted_item_ids == test_user_feature[0])[0][0]
-
-        items.at[(items['DonorID'] == user) & (items['ProjectID'] == test_user_feature[0]), 'RecallAtPosition' + alg_name] = pos
+content_filters = recsys.ContentFilers(items, ('DonorID', 'ProjectID', 'DonationAmount'), projects, ('ProjectTitle', 'ProjectShortDescription', 'ProjectNeedStatement', 'ProjectEssay'), algorithms_args=algorithms_args, log_level=log_level)
+items = content_filters.fit_all(n_random_non_interacted_items=n_random_non_interacted_items).items
+algorithms_name.update(content_filters.algorithms_name)

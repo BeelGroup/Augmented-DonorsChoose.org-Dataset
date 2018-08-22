@@ -505,6 +505,6 @@ class ContentFilers(object):
                 sorted_item_ids = content_item_ids[top_test_idx][sorted_similarities_indices]
                 pos = np.where(sorted_item_ids == test_user_feature[0])[0][0]
 
-                self.items.at[(self.items['DonorID'] == user) & (self.items[self.i] == test_user_feature[0]), 'RecallAtPosition' + alg_name] = pos
+                self.items.at[(self.items[self.u] == user) & (self.items[self.i] == test_user_feature[0]), 'RecallAtPosition' + alg_name] = pos
 
         return self

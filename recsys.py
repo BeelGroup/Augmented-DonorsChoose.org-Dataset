@@ -179,9 +179,22 @@ class CollaborativeFilters(object):
 
                 for acc_name in sorted(self.accuracy_methods):  # Predictable algorithm order for pretty printing
                     if acc_name == 'RMSE':
+                        # This could in theory be done once at the end but let's keep it here eitherway to make each cross-validation step fully independant
+                        if 'SquareError' + alg_name not in self.items:
+                            self.items['SquareError' + alg_name] = np.nan
+
+                        test_item_idx = self.items['SquareError' + alg_name].isna() & self.items['Prediction' + alg_name].notna()
+                        self.items.at[test_item_idx, 'SquareError' + alg_name] =  np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
+
                         train_acc = rmse(train_predictions, self.sparse_rating_matrix[train_idx].sorted_indices())
                         test_acc = rmse(test_predictions, self.sparse_rating_matrix[test_idx].sorted_indices())
                     elif acc_name == 'MAE':
+                        if 'AbsoluteError' + alg_name not in self.items:
+                            self.items['AbsoluteError' + alg_name] = np.nan
+
+                        test_item_idx = self.items['AbsoluteError' + alg_name].isna() & self.items['Prediction' + alg_name].notna()
+                        self.items.at[test_item_idx, 'AbsoluteError' + alg_name] =  np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
+
                         train_acc = mae(train_predictions, self.sparse_rating_matrix[train_idx].sorted_indices())
                         test_acc = mae(test_predictions, self.sparse_rating_matrix[test_idx].sorted_indices())
                     elif acc_name == 'RecallAtPosition':
@@ -505,6 +518,25 @@ class CollaborativeFiltersSpl(object):
                 if 'Prediction' + alg_name + '_x' in self.items.columns and 'Prediction' + alg_name + '_y' in self.items.columns:
                     self.items['Prediction' + alg_name] = self.items[['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y']].sum(axis=1)
                     self.items = self.items.drop(['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y'], axis=1)
+
+                for acc_name in sorted(self.accuracy_methods):  # Predictable algorithm order for pretty printing
+                    if acc_name == 'RMSE':
+                        # This could in theory be done once at the end but let's keep it here eitherway to make each cross-validation step fully independant
+                        if 'SquareError' + alg_name not in self.items:
+                            self.items['SquareError' + alg_name] = np.nan
+
+                        test_item_idx = self.items['SquareError' + alg_name].isna() & self.items['Prediction' + alg_name].notna()
+                        self.items.at[test_item_idx, 'SquareError' + alg_name] =  np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
+                    elif acc_name == 'MAE':
+                        if 'AbsoluteError' + alg_name not in self.items:
+                            self.items['AbsoluteError' + alg_name] = np.nan
+
+                        test_item_idx = self.items['AbsoluteError' + alg_name].isna() & self.items['Prediction' + alg_name].notna()
+                        self.items.at[test_item_idx, 'AbsoluteError' + alg_name] =  np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
+                    elif acc_name == 'RecallAtPosition':
+                        continue
+                    else:
+                        raise ValueError('Expected a valid name for an accuracy method, got "{}".'.format(acc_name))
 
         # Overall accuracy
         for alg_name in sorted(self.algorithms_name):

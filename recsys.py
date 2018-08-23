@@ -76,7 +76,7 @@ class CollaborativeFilters(object):
         item_columns: Tuple of the form (user_column_name, item_column_name, user_item_pair_rating).
         rating_scores: Range within which the user_item_pair_rating values are allowed to vary within.
         algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
-        accuracy_methods: Dictionary of accuracy methods.
+        accuracy_methods: Set or array of names for accuracy methods which to use for evaluation. Accepts a subset of {'RMSE', 'MAE', 'RecallAtPosition'}.
         log_level: Level at which to print messages to the console.
 
     Attributes:
@@ -86,7 +86,7 @@ class CollaborativeFilters(object):
         i: Name of the column containing the item-IDs.
         r: Name of the column containing the ratings.
         algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
-        accuracy_methods: Dictionary of accuracy methods.
+        accuracy_methods: Set or array of names for accuracy methods which to use for evaluation.
         sparse_rating_matrix: Matrix in SciPy's Compressed Sparse Row form containing a pivotted view of the itemized transactions.
         sparsity: Sparsity of the pivotted itemized transaction table.
         user_ids: Unique user-IDs useful for translating between the sparse_rating_matrix and the itemized table.
@@ -97,7 +97,7 @@ class CollaborativeFilters(object):
         self.items = items  # Transaction information in an itemized table
         self.u, self.i, self.r = item_columns  # User, Item, Rating/Transaction-Strength
         self.algorithms_args = defaultdict() if algorithms_args is None else algorithms_args
-        self.accuracy_methods = {'RMSE': rmse, 'MAE': mae} if accuracy_methods is None else accuracy_methods
+        self.accuracy_methods = {'RMSE', 'MAE', 'RecallAtPosition'} if accuracy_methods is None else accuracy_methods
         # Keep track of the columns added to the dataframe
         self.algorithms_name = set()
 
@@ -119,8 +119,16 @@ class CollaborativeFilters(object):
 
         for baseline_name, baseline_val in [('zero', np.zeros(self.sparse_rating_matrix.data.shape[0])), ('mean', np.full(self.sparse_rating_matrix.data.shape[0], self.sparse_rating_matrix.data.mean())), ('random', np.random.uniform(low=min(rating_scores), high=max(rating_scores), size=self.sparse_rating_matrix.data.shape[0]))]:
             log_line = '{:<8s} ::'.format(baseline_name)
-            for acc_name, acc in sorted(self.accuracy_methods.items(), key=lambda x: x[0]):  # Predictable algorithm order for pretty printing
-                overall_acc = acc(baseline_val, self.sparse_rating_matrix)
+            for acc_name in sorted(self.accuracy_methods):  # Predictable algorithm order for pretty printing
+                if acc_name == 'RMSE':
+                    overall_acc = rmse(baseline_val, self.sparse_rating_matrix)
+                elif acc_name == 'MAE':
+                    overall_acc = mae(baseline_val, self.sparse_rating_matrix)
+                elif acc_name == 'RecallAtPosition':
+                    continue
+                else:
+                    raise ValueError('Expected a valid name for an accuracy method, got "{}".'.format(acc_name))
+
                 log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
 
             self._logger.debug(log_line)
@@ -143,7 +151,7 @@ class CollaborativeFilters(object):
         algorithms_error = {}
         for alg_name in sci_algorithms.keys():
             # Tuple of training error and test error for each algorithm
-            algorithms_error[alg_name] = {acc_name: np.array([0., 0.]) for acc_name in self.accuracy_methods.keys()}
+            algorithms_error[alg_name] = {acc_name: np.array([0., 0.]) for acc_name in self.accuracy_methods}
 
         kf = KFold(n_splits=n_folds, shuffle=True)
 
@@ -169,35 +177,45 @@ class CollaborativeFilters(object):
                     self.items['Prediction' + alg_name] = self.items[['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y']].sum(axis=1)
                     self.items = self.items.drop(['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y'], axis=1)
 
-                for acc_name, acc in sorted(self.accuracy_methods.items(), key=lambda x: x[0]):  # Predictable algorithm order for pretty printing
-                    train_acc, test_acc = acc(train_predictions, self.sparse_rating_matrix[train_idx].sorted_indices()), acc(test_predictions, self.sparse_rating_matrix[test_idx].sorted_indices())
+                for acc_name in sorted(self.accuracy_methods):  # Predictable algorithm order for pretty printing
+                    if acc_name == 'RMSE':
+                        train_acc = rmse(train_predictions, self.sparse_rating_matrix[train_idx].sorted_indices())
+                        test_acc = rmse(test_predictions, self.sparse_rating_matrix[test_idx].sorted_indices())
+                    elif acc_name == 'MAE':
+                        train_acc = mae(train_predictions, self.sparse_rating_matrix[train_idx].sorted_indices())
+                        test_acc = mae(test_predictions, self.sparse_rating_matrix[test_idx].sorted_indices())
+                    elif acc_name == 'RecallAtPosition':
+                        loo = LeaveOneOut()
+                        for user, user_row in zip(self.user_ids[test_idx], self.sparse_rating_matrix[test_idx]):  # This loop is computationally expensive
+                            user_row_idx = user_row.nonzero()[1]
+                            # Splitting the data returns indices; However, be aware that indices were already handled in user_row_idx
+                            for _, test_user_idx in loo.split(user_row_idx):
+                                train_user_row = user_row.copy()
+                                train_user_row[0, user_row_idx[test_user_idx[0]]] = 0
+                                train_user_prediction = alg.estimate(train_user_row)
+                                if type(train_user_prediction) is csr_matrix:
+                                    train_user_prediction = train_user_prediction.toarray()
+
+                                train_user_prediction = train_user_prediction.flatten()
+
+                                non_rated_items = np.setdiff1d(np.arange(user_row.shape[1]), user_row_idx)
+                                top_test_choice = np.append(np.random.choice(non_rated_items, n_random_non_interacted_items), user_row_idx[test_user_idx])
+
+                                sorted_train_user_prediction_idx = (-1 * train_user_prediction[top_test_choice]).argsort()
+                                # The true rating is the last entry in top_test_choice and hence at the position of n_random_non_interacted_items
+                                pos = np.where(sorted_train_user_prediction_idx == n_random_non_interacted_items)[0][0]
+
+                                self.items.at[(self.items[self.u] == user) & (self.items[self.i] == self.item_ids[user_row_idx[test_user_idx[0]]]), 'RecallAtPosition' + alg_name] = pos
+
+                        train_acc = 0
+                        test_acc = self.items[self.items[self.u].isin(self.user_ids[test_idx])]['RecallAtPosition' + alg_name].mean()
+                    else:
+                        raise ValueError('Expected a valid name for an accuracy method, got "{}".'.format(acc_name))
+
                     algorithms_error[alg_name][acc_name] += np.array([train_acc, test_acc]) / n_folds
                     log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=train_acc, test_acc=test_acc)
 
                 self._logger.debug(log_line)
-
-                # Top-N accuracy calculation
-                loo = LeaveOneOut()
-                for user, user_row in zip(self.user_ids[test_idx], self.sparse_rating_matrix[test_idx]):  # This loop is computationally expensive
-                    user_row_idx = user_row.nonzero()[1]
-                    # Splitting the data returns indices; However, be aware that indices were already handled in user_row_idx
-                    for _, test_user_idx in loo.split(user_row_idx):
-                        train_user_row = user_row.copy()
-                        train_user_row[0, user_row_idx[test_user_idx[0]]] = 0
-                        train_user_prediction = alg.estimate(train_user_row)
-                        if type(train_user_prediction) is csr_matrix:
-                            train_user_prediction = train_user_prediction.toarray()
-
-                        train_user_prediction = train_user_prediction.flatten()
-
-                        non_rated_items = np.setdiff1d(np.arange(user_row.shape[1]), user_row_idx)
-                        top_test_choice = np.append(np.random.choice(non_rated_items, n_random_non_interacted_items), user_row_idx[test_user_idx])
-
-                        sorted_train_user_prediction_idx = (-1 * train_user_prediction[top_test_choice]).argsort()
-                        # The true rating is the last entry in top_test_choice and hence at the position of n_random_non_interacted_items
-                        pos = np.where(sorted_train_user_prediction_idx == n_random_non_interacted_items)[0][0]
-
-                        self.items.at[(self.items[self.u] == user) & (self.items[self.i] == self.item_ids[user_row_idx[test_user_idx[0]]]), 'RecallAtPosition' + alg_name] = pos
 
         for alg_name, acc_methods in sorted(algorithms_error.items(), key=lambda x: x[0]):
             log_line = '{:<15s} (average) ::'.format(alg_name)
@@ -209,8 +227,16 @@ class CollaborativeFilters(object):
         # Overall accuracy
         for alg_name in sorted(self.algorithms_name):
             log_line = '{:<20s} (overall) ::'.format(alg_name)
-            for acc_name, acc in sorted(self.accuracy_methods.items(), key=lambda x: x[0]):
-                overall_acc = acc(self.items['Prediction' + alg_name].values, np.asarray(self.items[self.r]))
+            for acc_name in sorted(self.accuracy_methods):
+                if acc_name == 'RMSE':
+                    overall_acc = rmse(self.items['Prediction' + alg_name].values, np.asarray(self.items[self.r]))
+                elif acc_name == 'MAE':
+                    overall_acc = mae(self.items['Prediction' + alg_name].values, np.asarray(self.items[self.r]))
+                elif acc_name == 'RecallAtPosition':
+                    overall_acc = self.items['RecallAtPosition' + alg_name].mean()
+                else:
+                    raise ValueError('Expected a valid name for an accuracy method, got "{}".'.format(acc_name))
+
                 log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
 
             self._logger.info(log_line)
@@ -417,7 +443,7 @@ class CollaborativeFiltersSpl(object):
         item_columns: Tuple of the form (user_column_name, item_column_name, user_item_pair_rating).
         rating_scores: Range within which the user_item_pair_rating values are allowed to vary within.
         algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
-        accuracy_methods: Dictionary of accuracy methods.
+        accuracy_methods: Set or array of names for accuracy methods which to use for evaluation. Accepts a subset of {'RMSE', 'MAE', 'RecallAtPosition'} with 'RecallAtPosition' being silently ignored.
         log_level: Level at which to print messages to the console.
 
     Attributes:
@@ -428,14 +454,14 @@ class CollaborativeFiltersSpl(object):
         i: Name of the column containing the item-IDs.
         r: Name of the column containing the ratings.
         algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
-        accuracy_methods: Dictionary of accuracy methods.
+        accuracy_methods: Set or array of names for accuracy methods which to use for evaluation.
     """
 
     def __init__(self, items, item_columns, rating_scores, algorithms_args=None, accuracy_methods=None, log_level=None):
         self.items = items  # Transaction information in an itemized table
         self.u, self.i, self.r = item_columns  # User, Item, Rating/Transaction-Strength
         self.algorithms_args = defaultdict() if algorithms_args is None else algorithms_args
-        self.accuracy_methods = {'RMSE': rmse, 'MAE': mae} if accuracy_methods is None else accuracy_methods
+        self.accuracy_methods = {'RMSE', 'MAE'} if accuracy_methods is None else accuracy_methods
         # Keep track of the columns added to the dataframe
         self.algorithms_name = set()
 
@@ -483,8 +509,16 @@ class CollaborativeFiltersSpl(object):
         # Overall accuracy
         for alg_name in sorted(self.algorithms_name):
             log_line = '{:<20s} (overall) ::'.format(alg_name)
-            for acc_name, acc in sorted(self.accuracy_methods.items(), key=lambda x: x[0]):
-                overall_acc = acc(self.items['Prediction' + alg_name].values, np.asarray(self.items[self.r]))
+            for acc_name in sorted(self.accuracy_methods):  # Predictable algorithm order for pretty printing
+                if acc_name == 'RMSE':
+                    overall_acc = rmse(self.items['Prediction' + alg_name].values, np.asarray(self.items[self.r]))
+                elif acc_name == 'MAE':
+                    overall_acc = mae(self.items['Prediction' + alg_name].values, np.asarray(self.items[self.r]))
+                elif acc_name == 'RecallAtPosition':
+                    continue
+                else:
+                    raise ValueError('Expected a valid name for an accuracy method, got "{}".'.format(acc_name))
+
                 log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
 
             self._logger.info(log_line)
@@ -503,6 +537,7 @@ class ContentFilers(object):
         content_items: Table of itemized item information with a column mapping the item-IDs to the items table.
         content_column_names: Tuple containing the columns which are to be concatenated and used as input features.
         algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
+        accuracy_methods: Set or array of names for accuracy methods which to use for evaluation. Accepts a subset of {'RMSE', 'MAE', 'RecallAtPosition'} with 'RMSE' and 'MAE' being silently ignored.
         log_level: Level at which to print messages to the console.
 
     Attributes:
@@ -515,15 +550,17 @@ class ContentFilers(object):
         t: Name of the column containing the input for the algorithms.
         tfidf_matrix: Matrix containing the TF-IDF features.
         algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
+        accuracy_methods: Set or array of names for accuracy methods which to use for evaluation. Accepts a subset of {'RMSE', 'MAE', 'RecallAtPosition'}.
     """
 
-    def __init__(self, items, item_columns, content_items, content_item_columns, algorithms_args=None, log_level=None):
+    def __init__(self, items, item_columns, content_items, content_item_columns, algorithms_args=None, accuracy_methods=None, log_level=None):
         self.items = items  # Transaction information in an itemized table
         self.u, self.i, self.r = item_columns  # User, Item, Rating/Transaction-Strength
 
         self.t = self.__class__.__name__ + 'Input'
 
         self.content_items = content_items  # Item information in an itemized table
+        self.accuracy_methods = {'RecallAtPosition'} if accuracy_methods is None else accuracy_methods
         self.algorithms_args = defaultdict() if algorithms_args is None else algorithms_args
         # Keep track of the columns added to the dataframe
         self.algorithms_name = set()
@@ -558,32 +595,55 @@ class ContentFilers(object):
         self.tfidf_matrix = alg.fit_transform(self.content_items[self.t])
         # One may pretty print actual words/n-grams instead of positions in arrays using `tfidf_feature_names = alg.get_feature_names()`
 
-        self.items['RecallAtPosition' + alg_name] = np.nan
-        loo = LeaveOneOut()
-        for user in self.items[self.u].unique():  # This loop is computationally expensive
-            user_items = self.items[self.items[self.u] == user]
-            user_item_idx = np.isin(content_item_ids, user_items[self.i])
-            user_features = self.tfidf_matrix[user_item_idx]
+        for acc_name in sorted(self.accuracy_methods):
+            if acc_name == 'RMSE':
+                continue
+            elif acc_name == 'MAE':
+                continue
+            elif acc_name == 'RecallAtPosition':
+                self.items['RecallAtPosition' + alg_name] = np.nan
+                loo = LeaveOneOut()
+                for user in self.items[self.u].unique():  # This loop is computationally expensive
+                    user_items = self.items[self.items[self.u] == user]
+                    user_item_idx = np.isin(content_item_ids, user_items[self.i])
+                    user_features = self.tfidf_matrix[user_item_idx]
 
-            # Single out one interacted item to use for testing using integer indices
-            for train_user_features_idx, test_user_features_idx in loo.split(user_features):
-                test_user_feature = user_items[self.i].iloc[test_user_features_idx].values
+                    # Single out one interacted item to use for testing using integer indices
+                    for train_user_features_idx, test_user_features_idx in loo.split(user_features):
+                        test_user_feature = user_items[self.i].iloc[test_user_features_idx].values
 
-                # Multiply each item's feature with the user's rating of the item and divide the result by the sum of all ratings made by the user
-                content_train_users_profiles = user_features[train_user_features_idx].transpose().dot(user_items[self.r].iloc[train_user_features_idx].values)
-                content_train_users_profiles = content_train_users_profiles / user_items[self.r].iloc[train_user_features_idx].sum()
+                        # Multiply each item's feature with the user's rating of the item and divide the result by the sum of all ratings made by the user
+                        content_train_users_profiles = user_features[train_user_features_idx].transpose().dot(user_items[self.r].iloc[train_user_features_idx].values)
+                        content_train_users_profiles = content_train_users_profiles / user_items[self.r].iloc[train_user_features_idx].sum()
 
-                # Create an array of items which the user has not interacted with yet plus one with which an interaction took place
-                non_rated_user_items_ids = np.setdiff1d(content_item_ids, user_items[self.i])
-                top_test_choice = np.append(np.random.choice(np.array(non_rated_user_items_ids), n_random_non_interacted_items), test_user_feature)
-                top_test_idx = np.isin(content_item_ids, top_test_choice)
+                        # Create an array of items which the user has not interacted with yet plus one with which an interaction took place
+                        non_rated_user_items_ids = np.setdiff1d(content_item_ids, user_items[self.i])
+                        top_test_choice = np.append(np.random.choice(np.array(non_rated_user_items_ids), n_random_non_interacted_items), test_user_feature)
+                        top_test_idx = np.isin(content_item_ids, top_test_choice)
 
-                # Calculate the similarity and retrieve the position of the test id within the recommended set
-                cosine_similarities = cosine_similarity(content_train_users_profiles.reshape(1, -1), self.tfidf_matrix[top_test_idx]).flatten()
-                sorted_similarities_indices = (-1 * cosine_similarities).argsort()
-                sorted_item_ids = content_item_ids[top_test_idx][sorted_similarities_indices]
-                pos = np.where(sorted_item_ids == test_user_feature[0])[0][0]
+                        # Calculate the similarity and retrieve the position of the test id within the recommended set
+                        cosine_similarities = cosine_similarity(content_train_users_profiles.reshape(1, -1), self.tfidf_matrix[top_test_idx]).flatten()
+                        sorted_similarities_indices = (-1 * cosine_similarities).argsort()
+                        sorted_item_ids = content_item_ids[top_test_idx][sorted_similarities_indices]
+                        pos = np.where(sorted_item_ids == test_user_feature[0])[0][0]
 
-                self.items.at[(self.items[self.u] == user) & (self.items[self.i] == test_user_feature[0]), 'RecallAtPosition' + alg_name] = pos
+                        self.items.at[(self.items[self.u] == user) & (self.items[self.i] == test_user_feature[0]), 'RecallAtPosition' + alg_name] = pos
+
+        # Overall accuracy
+        for alg_name in sorted(self.algorithms_name):
+            log_line = '{:<20s} (overall) ::'.format(alg_name)
+            for acc_name in sorted(self.accuracy_methods):
+                if acc_name == 'RMSE':
+                    continue
+                elif acc_name == 'MAE':
+                    continue
+                elif acc_name == 'RecallAtPosition':
+                    overall_acc = self.items['RecallAtPosition' + alg_name].mean()
+                else:
+                    raise ValueError('Expected a valid name for an accuracy method, got "{}".'.format(acc_name))
+
+                log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
+
+            self._logger.info(log_line)
 
         return self

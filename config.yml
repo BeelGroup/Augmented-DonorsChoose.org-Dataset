@@ -43,6 +43,10 @@ algorithms_args:
         lowercase: True
         max_df: 0.9
         max_features: 5000
+accuracy_methods:
+    - 'RMSE'
+    - 'MAE'
+    - 'RecallAtPosition'
 rating_scores: [1, 2, 3, 4, 5]
 # Cut only on the given quantile range to mitigate the effect of outliers and append the bottom and top to the first respectively last bin afterwards
 rating_range_quantile: [0., 0.99]

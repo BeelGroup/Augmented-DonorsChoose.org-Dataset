@@ -22,11 +22,11 @@ n_random_non_interacted_items =  config['n_random_non_interacted_items']
 sampling_methods = config['sampling_methods']
 n_folds = config['n_folds']
 algorithms_args = config['algorithms_args']
+accuracy_methods = config['accuracy_methods']
 rating_scores = config['rating_scores']
 rating_range_quantile = config['rating_range_quantile']
 
 logging.basicConfig(level=log_level)
-accuracy_methods = {'RMSE': recsys.rmse, 'MAE': recsys.mae}
 # Implicitly rely on other commands using the current random state from numpy
 np.random.seed(random_state_seed)
 
@@ -82,6 +82,6 @@ collab_filters = recsys.CollaborativeFilters(items, ('DonorID', 'ProjectID', 'Do
 items = collab_filters.fit_all(n_folds=n_folds, n_random_non_interacted_items=n_random_non_interacted_items).items
 algorithms_name.update(collab_filters.algorithms_name)
 
-content_filters = recsys.ContentFilers(items, ('DonorID', 'ProjectID', 'DonationAmount'), projects, ('ProjectTitle', 'ProjectShortDescription', 'ProjectNeedStatement', 'ProjectEssay'), algorithms_args=algorithms_args, log_level=log_level)
+content_filters = recsys.ContentFilers(items, ('DonorID', 'ProjectID', 'DonationAmount'), projects, ('ProjectTitle', 'ProjectShortDescription', 'ProjectNeedStatement', 'ProjectEssay'), algorithms_args=algorithms_args, accuracy_methods=accuracy_methods, log_level=log_level)
 items = content_filters.fit_all(n_random_non_interacted_items=n_random_non_interacted_items).items
 algorithms_name.update(content_filters.algorithms_name)

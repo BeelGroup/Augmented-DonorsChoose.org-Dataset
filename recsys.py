@@ -187,25 +187,25 @@ class CollaborativeFilters(object):
                     elif acc_name == 'RecallAtPosition':
                         loo = LeaveOneOut()
                         for user, user_row in zip(self.user_ids[test_idx], self.sparse_rating_matrix[test_idx]):  # This loop is computationally expensive
-                            user_row_idx = user_row.nonzero()[1]
-                            # Splitting the data returns indices; However, be aware that indices were already handled in user_row_idx
-                            for _, test_user_idx in loo.split(user_row_idx):
-                                train_user_row = user_row.copy()
-                                train_user_row[0, user_row_idx[test_user_idx[0]]] = 0
-                                train_user_prediction = alg.estimate(train_user_row)
-                                if type(train_user_prediction) is csr_matrix:
-                                    train_user_prediction = train_user_prediction.toarray()
+                            user_nonzero_idx = user_row.nonzero()[1]
+                            # Splitting the data returns indices; However, be aware that indices were already handled in user_nonzero_idx
+                            for _, test_user_idx in loo.split(user_nonzero_idx):
+                                user_row_train = user_row.copy()
+                                user_row_train[0, user_nonzero_idx[test_user_idx[0]]] = 0
+                                user_train_prediction = alg.estimate(user_row_train)
+                                if type(user_train_prediction) is csr_matrix:
+                                    user_train_prediction = user_train_prediction.toarray()
 
-                                train_user_prediction = train_user_prediction.flatten()
+                                user_train_prediction = user_train_prediction.flatten()
 
-                                non_rated_items = np.setdiff1d(np.arange(user_row.shape[1]), user_row_idx)
-                                top_test_choice = np.append(np.random.choice(non_rated_items, n_random_non_interacted_items), user_row_idx[test_user_idx])
+                                non_rated_items_idx = np.setdiff1d(np.arange(user_row.shape[1]), user_nonzero_idx)
+                                top_test_idx_choice = np.append(np.random.choice(non_rated_items_idx, n_random_non_interacted_items), user_nonzero_idx[test_user_idx])
 
-                                sorted_train_user_prediction_idx = (-1 * train_user_prediction[top_test_choice]).argsort()
-                                # The true rating is the last entry in top_test_choice and hence at the position of n_random_non_interacted_items
-                                pos = np.where(sorted_train_user_prediction_idx == n_random_non_interacted_items)[0][0]
+                                sorted_top_prediction_idx = (-1 * user_train_prediction[top_test_idx_choice]).argsort()
+                                # The true rating is the last entry in top_test_idx_choice and hence at the position of n_random_non_interacted_items
+                                pos = np.where(sorted_top_prediction_idx == n_random_non_interacted_items)[0][0]
 
-                                self.items.at[(self.items[self.u] == user) & (self.items[self.i] == self.item_ids[user_row_idx[test_user_idx[0]]]), 'RecallAtPosition' + alg_name] = pos
+                                self.items.at[(self.items[self.u] == user) & (self.items[self.i] == self.item_ids[user_nonzero_idx[test_user_idx[0]]]), 'RecallAtPosition' + alg_name] = pos
 
                         train_acc = 0
                         test_acc = self.items[self.items[self.u].isin(self.user_ids[test_idx])]['RecallAtPosition' + alg_name].mean()

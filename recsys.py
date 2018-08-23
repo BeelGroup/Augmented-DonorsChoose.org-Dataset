@@ -69,7 +69,7 @@ def mae(estimate, truth):
 class CollaborativeFilters(object):
     """Various collaborative filtering techniques designed to recommend items to a user.
 
-    Selection of recommender systems using collaborative filtering techniques build upon Scikit-Learn and SciPy plus SciKit-Surprise a.k.a. Surpriselib.
+    Selection of recommender systems using collaborative filtering techniques build upon Scikit-Learn and SciPy.
 
     Args:
         items: Table of itemized transactions with a column for user-IDs and item-IDs plus the respective rating.
@@ -124,10 +124,6 @@ class CollaborativeFilters(object):
                 log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
 
             self._logger.debug(log_line)
-
-        # Read data into scikit-surprise respectively surpriselib
-        spl_reader = spl_Reader(line_format='user item rating', rating_scale=(int(min(rating_scores)), int(max(rating_scores))))
-        self.spl_items = spl.Dataset.load_from_df(self.items[[self.u, self.i, self.r]], spl_reader)
 
     def fit_all(self, n_folds=5):
         """Fit everything and return the instance of the class.
@@ -186,31 +182,6 @@ class CollaborativeFilters(object):
                 log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=acc_value[0], test_acc=acc_value[1])
 
             self._logger.debug(log_line)
-
-        spl_algorithms = {}
-        spl_algorithms['SPL-SVD'] = spl.SVD(**self.algorithms_args['SPL-SVD'])
-        spl_algorithms['SPL-SVDpp'] = spl.SVDpp(**self.algorithms_args['SPL-SVDpp'])
-        spl_algorithms['SPL-NMF'] = spl.NMF(**self.algorithms_args['SPL-NMF'])
-        spl_algorithms['SPL-KNNWithMeans'] = spl.KNNWithMeans(**self.algorithms_args['SPL-KNNWithMeans'])
-        spl_algorithms['SPL-KNNBasic'] = spl.KNNBasic(**self.algorithms_args['SPL-KNNBasic'])
-        spl_algorithms['SPL-KNNWithZScore'] = spl.KNNWithZScore(**self.algorithms_args['SPL-KNNWithZScore'])
-        spl_algorithms['SPL-KNNBaseline'] = spl.KNNBaseline(**self.algorithms_args['SPL-KNNBaseline'])
-        spl_algorithms['SPL-NormalPredictor'] = spl.NormalPredictor(**self.algorithms_args['SPL-NormalPredictor'])
-        spl_algorithms['SPL-CoClustering'] = spl.CoClustering(**self.algorithms_args['SPL-CoClustering'])
-        spl_algorithms['SPL-SlopeOne'] = spl.SlopeOne(**self.algorithms_args['SPL-SlopeOne'])
-        self.algorithms_name.update(spl_algorithms.keys())
-
-        spl_kf = spl_KFold(n_splits=n_folds, shuffle=True)
-        for spl_train, spl_test in spl_kf.split(self.spl_items):
-            for alg_name, alg in sorted(spl_algorithms.items(), key=lambda x: x[0]):
-                alg.fit(spl_train)
-                # Test returns an object of type surprise.prediction_algorithms.predictions.Prediction
-                predictions = pd.DataFrame(alg.test(spl_test), columns=[self.u, self.i, 'TrueRating', 'Prediction' + alg_name, 'RatingDetails'])
-                # Merge the predicted rating into the dataframe
-                self.items = pd.merge(self.items, predictions[[self.u, self.i, 'Prediction' + alg_name]], on=[self.u, self.i], how='left', suffixes=('_x', '_y'), sort=False)
-                if 'Prediction' + alg_name + '_x' in self.items.columns and 'Prediction' + alg_name + '_y' in self.items.columns:
-                    self.items['Prediction' + alg_name] = self.items[['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y']].sum(axis=1)
-                    self.items = self.items.drop(['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y'], axis=1)
 
         # Overall accuracy
         for alg_name in sorted(self.algorithms_name):
@@ -411,6 +382,91 @@ class CollaborativeFilters(object):
             """
             indices = self.knn.kneighbors(test_set, n_neighbors=1, return_distance=False).flatten()
             return self.population_matrix[indices]
+
+
+class CollaborativeFiltersSpl(object):
+    """Various content-based filtering techniques designed to recommend items to a user.
+
+    Selection of recommender systems using content-based filtering techniques build upon SciKit-Surprise a.k.a Surpriselib.
+
+    Args:
+        items: Table of itemized transactions with a column for user-IDs and item-IDs plus the respective rating.
+        item_columns: Tuple of the form (user_column_name, item_column_name, user_item_pair_rating).
+        rating_scores: Range within which the user_item_pair_rating values are allowed to vary within.
+        algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
+        accuracy_methods: Dictionary of accuracy methods.
+        log_level: Level at which to print messages to the console.
+
+    Attributes:
+        items: Table containing the original input plus predictions for algorithms from the set in algorithms_name.
+        spl_items: Table containing the data in a format suitable for Surpriselib.
+        algorithms_name: Name of all algorithms which were fitted to the data and for which subsequently columns were added to the column.
+        u: Name of the column containing the user-IDs.
+        i: Name of the column containing the item-IDs.
+        r: Name of the column containing the ratings.
+        algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
+        accuracy_methods: Dictionary of accuracy methods.
+    """
+
+    def __init__(self, items, item_columns, rating_scores, algorithms_args=None, accuracy_methods=None, log_level=None):
+        self.items = items  # Transaction information in an itemized table
+        self.u, self.i, self.r = item_columns  # User, Item, Rating/Transaction-Strength
+        self.algorithms_args = defaultdict() if algorithms_args is None else algorithms_args
+        self.accuracy_methods = {'RMSE': rmse, 'MAE': mae} if accuracy_methods is None else accuracy_methods
+        # Keep track of the columns added to the dataframe
+        self.algorithms_name = set()
+
+        log_level = 10 if log_level is None else log_level
+        self._logger = logging.getLogger(self.__class__.__name__)
+        self._logger.setLevel(log_level)
+
+        # Read data into scikit-surprise respectively surpriselib
+        spl_reader = spl_Reader(line_format='user item rating', rating_scale=(int(min(rating_scores)), int(max(rating_scores))))
+        self.spl_items = spl.Dataset.load_from_df(self.items[[self.u, self.i, self.r]], spl_reader)
+
+    def fit_all(self, n_folds=5):
+        """Fit everything and return the instance of the class.
+
+        Convenient helper function which performs every available content-based filtering technique and amends the itemized transaction table accordingly.
+
+        Args:
+            n_folds: Number of folds to perform in cross-validation.
+        """
+        spl_algorithms = {}
+        spl_algorithms['SPL-SVD'] = spl.SVD(**self.algorithms_args['SPL-SVD'])
+        spl_algorithms['SPL-SVDpp'] = spl.SVDpp(**self.algorithms_args['SPL-SVDpp'])
+        spl_algorithms['SPL-NMF'] = spl.NMF(**self.algorithms_args['SPL-NMF'])
+        spl_algorithms['SPL-KNNWithMeans'] = spl.KNNWithMeans(**self.algorithms_args['SPL-KNNWithMeans'])
+        spl_algorithms['SPL-KNNBasic'] = spl.KNNBasic(**self.algorithms_args['SPL-KNNBasic'])
+        spl_algorithms['SPL-KNNWithZScore'] = spl.KNNWithZScore(**self.algorithms_args['SPL-KNNWithZScore'])
+        spl_algorithms['SPL-KNNBaseline'] = spl.KNNBaseline(**self.algorithms_args['SPL-KNNBaseline'])
+        spl_algorithms['SPL-NormalPredictor'] = spl.NormalPredictor(**self.algorithms_args['SPL-NormalPredictor'])
+        spl_algorithms['SPL-CoClustering'] = spl.CoClustering(**self.algorithms_args['SPL-CoClustering'])
+        spl_algorithms['SPL-SlopeOne'] = spl.SlopeOne(**self.algorithms_args['SPL-SlopeOne'])
+        self.algorithms_name.update(spl_algorithms.keys())
+
+        spl_kf = spl_KFold(n_splits=n_folds, shuffle=True)
+        for spl_train, spl_test in spl_kf.split(self.spl_items):
+            for alg_name, alg in sorted(spl_algorithms.items(), key=lambda x: x[0]):
+                alg.fit(spl_train)
+                # Test returns an object of type surprise.prediction_algorithms.predictions.Prediction
+                predictions = pd.DataFrame(alg.test(spl_test), columns=[self.u, self.i, 'TrueRating', 'Prediction' + alg_name, 'RatingDetails'])
+                # Merge the predicted rating into the dataframe
+                self.items = pd.merge(self.items, predictions[[self.u, self.i, 'Prediction' + alg_name]], on=[self.u, self.i], how='left', suffixes=('_x', '_y'), sort=False)
+                if 'Prediction' + alg_name + '_x' in self.items.columns and 'Prediction' + alg_name + '_y' in self.items.columns:
+                    self.items['Prediction' + alg_name] = self.items[['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y']].sum(axis=1)
+                    self.items = self.items.drop(['Prediction' + alg_name + '_x', 'Prediction' + alg_name + '_y'], axis=1)
+
+        # Overall accuracy
+        for alg_name in sorted(self.algorithms_name):
+            log_line = '{:<20s} (overall) ::'.format(alg_name)
+            for acc_name, acc in sorted(self.accuracy_methods.items(), key=lambda x: x[0]):
+                overall_acc = acc(self.items['Prediction' + alg_name].values, np.asarray(self.items[self.r]))
+                log_line += ' | Overall-{0:s}: {overall_acc:>7.2f}'.format(acc_name, overall_acc=overall_acc)
+
+            self._logger.info(log_line)
+
+        return self
 
 
 class ContentFilers(object):

@@ -79,7 +79,7 @@ items['DonationAmount'] = pd.cut(items['DonationAmount'], bins=rating_bins, incl
 algorithms_name = set()
 
 collab_filters = recsys.CollaborativeFilters(items, ('DonorID', 'ProjectID', 'DonationAmount'), rating_scores=rating_scores, algorithms_args=algorithms_args, accuracy_methods=accuracy_methods, log_level=log_level)
-items = collab_filters.fit_all(n_folds=n_folds).items
+items = collab_filters.fit_all(n_folds=n_folds, n_random_non_interacted_items=n_random_non_interacted_items).items
 algorithms_name.update(collab_filters.algorithms_name)
 
 content_filters = recsys.ContentFilers(items, ('DonorID', 'ProjectID', 'DonationAmount'), projects, ('ProjectTitle', 'ProjectShortDescription', 'ProjectNeedStatement', 'ProjectEssay'), algorithms_args=algorithms_args, log_level=log_level)

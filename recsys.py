@@ -125,7 +125,7 @@ class CollaborativeFilters(object):
 
             self._logger.debug(log_line)
 
-    def fit_all(self, n_folds=5):
+    def fit_all(self, n_folds=5, n_random_non_interacted_items=100):
         """Fit everything and return the instance of the class.
 
         Convenient helper function which performs every available collaborative filtering technique and amends the itemized transaction table accordingly.
@@ -175,6 +175,29 @@ class CollaborativeFilters(object):
                     log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(acc_name, train_acc=train_acc, test_acc=test_acc)
 
                 self._logger.debug(log_line)
+
+                # Top-N accuracy calculation
+                loo = LeaveOneOut()
+                for user, user_row in zip(self.user_ids[test_idx], self.sparse_rating_matrix[test_idx]):  # This loop is computationally expensive
+                    user_row_idx = user_row.nonzero()[1]
+                    # Splitting the data returns indices; However, be aware that indices were already handled in user_row_idx
+                    for _, test_user_idx in loo.split(user_row_idx):
+                        train_user_row = user_row.copy()
+                        train_user_row[0, user_row_idx[test_user_idx[0]]] = 0
+                        train_user_prediction = alg.estimate(train_user_row)
+                        if type(train_user_prediction) is csr_matrix:
+                            train_user_prediction = train_user_prediction.toarray()
+
+                        train_user_prediction = train_user_prediction.flatten()
+
+                        non_rated_items = np.setdiff1d(np.arange(user_row.shape[1]), user_row_idx)
+                        top_test_choice = np.append(np.random.choice(non_rated_items, n_random_non_interacted_items), user_row_idx[test_user_idx])
+
+                        sorted_train_user_prediction_idx = (-1 * train_user_prediction[top_test_choice]).argsort()
+                        # The true rating is the last entry in top_test_choice and hence at the position of n_random_non_interacted_items
+                        pos = np.where(sorted_train_user_prediction_idx == n_random_non_interacted_items)[0][0]
+
+                        self.items.at[(self.items[self.u] == user) & (self.items[self.i] == self.item_ids[user_row_idx[test_user_idx[0]]]), 'RecallAtPosition' + alg_name] = pos
 
         for alg_name, acc_methods in sorted(algorithms_error.items(), key=lambda x: x[0]):
             log_line = '{:<15s} (average) ::'.format(alg_name)

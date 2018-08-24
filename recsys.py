@@ -75,7 +75,7 @@ class CollaborativeFilters(object):
         items: Table of itemized transactions with a column for user-IDs and item-IDs plus the respective rating.
         item_columns: Tuple of the form (user_column_name, item_column_name, user_item_pair_rating).
         rating_scores: Range within which the user_item_pair_rating values are allowed to vary within.
-        algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
+        algorithms_args: Arguments in the form of a dictionary for each algorithm to be used. Possible keys are {'SciPy-SVD', 'SKLearn-SVD', 'SKLearn-KNN', 'SKLearn-NMF'}, other keys will be silently ignored.
         accuracy_methods: Set or array of names for accuracy methods which to use for evaluation. Accepts a subset of {'RMSE', 'MAE', 'RecallAtPosition'}.
         log_level: Level at which to print messages to the console.
 
@@ -141,11 +141,12 @@ class CollaborativeFilters(object):
         Args:
             n_folds: Number of folds to perform in cross-validation.
         """
+        sci_algorithms_avail = {'SciPy-SVD': self.SciPySVD, 'SKLearn-SVD': self.SKLearnSVD, 'SKLearn-KNN': self.SKLearnKNN, 'SKLearn-NMF': self.SKLearnNMF}
+
         sci_algorithms = {}
-        sci_algorithms['SciPy-SVD'] = self.SciPySVD(**self.algorithms_args['SciPy-SVD'])
-        sci_algorithms['SKLearn-SVD'] = self.SKLearnSVD(**self.algorithms_args['SKLearn-SVD'])
-        sci_algorithms['SKLearn-KNN'] = self.SKLearnKNN(**self.algorithms_args['SKLearn-KNN'])
-        sci_algorithms['SKLearn-NMF'] = self.SKLearnNMF(**self.algorithms_args['SKLearn-NMF'])
+        for alg_name in np.intersect1d(list(sci_algorithms_avail.keys()), list(self.algorithms_args.keys())):
+            sci_algorithms[alg_name] = sci_algorithms_avail[alg_name](**self.algorithms_args[alg_name])
+
         self.algorithms_name.update(sci_algorithms.keys())
         # Initialize a dictionary with an entry for each algorithm which shall store accuracy values for every selected accuracy method
         algorithms_error = {}
@@ -455,7 +456,7 @@ class CollaborativeFiltersSpl(object):
         items: Table of itemized transactions with a column for user-IDs and item-IDs plus the respective rating.
         item_columns: Tuple of the form (user_column_name, item_column_name, user_item_pair_rating).
         rating_scores: Range within which the user_item_pair_rating values are allowed to vary within.
-        algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
+        algorithms_args: Arguments in the form of a dictionary for each algorithm to be used. Possible keys are {'SPL-SVD', 'SPL-SVDpp', 'SPL-NMF', 'SPL-KNNWithMeans', 'SPL-KNNBasic', 'SPL-KNNWithZScore', 'SPL-KNNBaseline', 'SPL-NormalPredictor', 'SPL-CoClustering', 'SPL-SlopeOne'}, other keys will be silently ignored.
         accuracy_methods: Set or array of names for accuracy methods which to use for evaluation. Accepts a subset of {'RMSE', 'MAE', 'RecallAtPosition'} with 'RecallAtPosition' being silently ignored.
         log_level: Level at which to print messages to the console.
 
@@ -494,17 +495,12 @@ class CollaborativeFiltersSpl(object):
         Args:
             n_folds: Number of folds to perform in cross-validation.
         """
+        spl_algorithms_avail = {'SPL-SVD': spl.SVD, 'SPL-SVDpp': spl.SVDpp, 'SPL-NMF': spl.NMF, 'SPL-KNNWithMeans': spl.KNNWithMeans, 'SPL-KNNBasic': spl.KNNBasic, 'SPL-KNNWithZScore': spl.KNNWithZScore, 'SPL-KNNBaseline': spl.KNNBaseline, 'SPL-NormalPredictor': spl.NormalPredictor, 'SPL-CoClustering': spl.CoClustering, 'SPL-SlopeOne': spl.SlopeOne}
+
         spl_algorithms = {}
-        spl_algorithms['SPL-SVD'] = spl.SVD(**self.algorithms_args['SPL-SVD'])
-        spl_algorithms['SPL-SVDpp'] = spl.SVDpp(**self.algorithms_args['SPL-SVDpp'])
-        spl_algorithms['SPL-NMF'] = spl.NMF(**self.algorithms_args['SPL-NMF'])
-        spl_algorithms['SPL-KNNWithMeans'] = spl.KNNWithMeans(**self.algorithms_args['SPL-KNNWithMeans'])
-        spl_algorithms['SPL-KNNBasic'] = spl.KNNBasic(**self.algorithms_args['SPL-KNNBasic'])
-        spl_algorithms['SPL-KNNWithZScore'] = spl.KNNWithZScore(**self.algorithms_args['SPL-KNNWithZScore'])
-        spl_algorithms['SPL-KNNBaseline'] = spl.KNNBaseline(**self.algorithms_args['SPL-KNNBaseline'])
-        spl_algorithms['SPL-NormalPredictor'] = spl.NormalPredictor(**self.algorithms_args['SPL-NormalPredictor'])
-        spl_algorithms['SPL-CoClustering'] = spl.CoClustering(**self.algorithms_args['SPL-CoClustering'])
-        spl_algorithms['SPL-SlopeOne'] = spl.SlopeOne(**self.algorithms_args['SPL-SlopeOne'])
+        for alg_name in np.intersect1d(list(spl_algorithms_avail.keys()), list(self.algorithms_args.keys())):
+            spl_algorithms[alg_name] = spl_algorithms_avail[alg_name](**self.algorithms_args[alg_name])
+
         self.algorithms_name.update(spl_algorithms.keys())
 
         spl_kf = spl_KFold(n_splits=n_folds, shuffle=True)
@@ -568,7 +564,7 @@ class ContentFilers(object):
         column_names: Tuple of the form (user_column_name, item_column_name, user_item_pair_rating).
         content_items: Table of itemized item information with a column mapping the item-IDs to the items table.
         content_column_names: Tuple containing the columns which are to be concatenated and used as input features.
-        algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
+        algorithms_args: Arguments in the form of a dictionary for each algorithm to be used. Possible keys are {'SKLearn-TfidfVectorizer'}, other keys will be silently ignored.
         accuracy_methods: Set or array of names for accuracy methods which to use for evaluation. Accepts a subset of {'RMSE', 'MAE', 'RecallAtPosition'} with 'RMSE' and 'MAE' being silently ignored.
         log_level: Level at which to print messages to the console.
 
@@ -618,8 +614,12 @@ class ContentFilers(object):
         Args:
             n_random_non_interacted_items: Number of random non-interacted items which shall be used for calculating the accuracy metrics.
         """
+        content_algorithms_avail = {'SKLearn-TfidfVectorizer': TfidfVectorizer}
+
         content_algorithms = {}
-        content_algorithms['SKLearn-TfidfVectorizer'] = TfidfVectorizer(**self.algorithms_args['SKLearn-TfidfVectorizer'])
+        for alg_name in np.intersect1d(list(content_algorithms_avail.keys()), list(self.algorithms_args.keys())):
+            content_algorithms[alg_name] = content_algorithms_avail[alg_name](**self.algorithms_args[alg_name])
+
         self.algorithms_name.update(content_algorithms.keys())
         alg_name, alg = 'SKLearn-TfidfVectorizer', content_algorithms['SKLearn-TfidfVectorizer']
 

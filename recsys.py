@@ -149,6 +149,10 @@ class CollaborativeFilters(object):
         for alg_name in np.intersect1d(list(self.algorithms_avail.keys()), list(self.algorithms_args.keys())):
             sci_algorithms[alg_name] = self.algorithms_avail[alg_name](**self.algorithms_args[alg_name])
 
+        if not sci_algorithms:
+            self._logger.warning('{} method invoked without having specified any tasks; Returning...'.format(self.__class__.__name__))
+            return self
+
         self.algorithms_name.update(sci_algorithms.keys())
         # Initialize a dictionary with an entry for each algorithm which shall store accuracy values for every selected accuracy method
         algorithms_error = {}
@@ -505,6 +509,10 @@ class CollaborativeFiltersSpl(object):
         for alg_name in np.intersect1d(list(self.algorithms_avail.keys()), list(self.algorithms_args.keys())):
             spl_algorithms[alg_name] = self.algorithms_avail[alg_name](**self.algorithms_args[alg_name])
 
+        if not spl_algorithms:
+            self._logger.warning('{} method invoked without having specified any tasks; Returning...'.format(self.__class__.__name__))
+            return self
+
         self.algorithms_name.update(spl_algorithms.keys())
 
         spl_kf = spl_KFold(n_splits=n_folds, shuffle=True)
@@ -625,6 +633,10 @@ class ContentFilers(object):
         content_algorithms = {}
         for alg_name in np.intersect1d(list(self.algorithms_avail.keys()), list(self.algorithms_args.keys())):
             content_algorithms[alg_name] = self.algorithms_avail[alg_name](**self.algorithms_args[alg_name])
+
+        if not content_algorithms:
+            self._logger.warning('{} method invoked without having specified any tasks; Returning...'.format(self.__class__.__name__))
+            return self
 
         self.algorithms_name.update(content_algorithms.keys())
         alg_name, alg = 'SKLearn-TfidfVectorizer', content_algorithms['SKLearn-TfidfVectorizer']

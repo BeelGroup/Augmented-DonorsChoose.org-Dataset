@@ -85,6 +85,7 @@ class CollaborativeFilters(object):
         u: Name of the column containing the user-IDs.
         i: Name of the column containing the item-IDs.
         r: Name of the column containing the ratings.
+        algorithms_avail: Dictionary of available algorithms with the location of the function as the value.
         algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
         accuracy_methods: Set or array of names for accuracy methods which to use for evaluation.
         sparse_rating_matrix: Matrix in SciPy's Compressed Sparse Row form containing a pivotted view of the itemized transactions.
@@ -96,7 +97,10 @@ class CollaborativeFilters(object):
     def __init__(self, items, item_columns, rating_scores, algorithms_args=None, accuracy_methods=None, log_level=None):
         self.items = items  # Transaction information in an itemized table
         self.u, self.i, self.r = item_columns  # User, Item, Rating/Transaction-Strength
-        self.algorithms_args = defaultdict() if algorithms_args is None else algorithms_args
+
+        self.algorithms_avail = {'SciPy-SVD': self.SciPySVD, 'SKLearn-SVD': self.SKLearnSVD, 'SKLearn-KNN': self.SKLearnKNN, 'SKLearn-NMF': self.SKLearnNMF}
+
+        self.algorithms_args = dict.fromkeys(self.algorithms_avail.keys(), {}) if algorithms_args is None else algorithms_args
         self.accuracy_methods = {'RMSE', 'MAE', 'RecallAtPosition'} if accuracy_methods is None else accuracy_methods
         # Keep track of the columns added to the dataframe
         self.algorithms_name = set()
@@ -141,11 +145,9 @@ class CollaborativeFilters(object):
         Args:
             n_folds: Number of folds to perform in cross-validation.
         """
-        sci_algorithms_avail = {'SciPy-SVD': self.SciPySVD, 'SKLearn-SVD': self.SKLearnSVD, 'SKLearn-KNN': self.SKLearnKNN, 'SKLearn-NMF': self.SKLearnNMF}
-
         sci_algorithms = {}
-        for alg_name in np.intersect1d(list(sci_algorithms_avail.keys()), list(self.algorithms_args.keys())):
-            sci_algorithms[alg_name] = sci_algorithms_avail[alg_name](**self.algorithms_args[alg_name])
+        for alg_name in np.intersect1d(list(self.algorithms_avail.keys()), list(self.algorithms_args.keys())):
+            sci_algorithms[alg_name] = self.algorithms_avail[alg_name](**self.algorithms_args[alg_name])
 
         self.algorithms_name.update(sci_algorithms.keys())
         # Initialize a dictionary with an entry for each algorithm which shall store accuracy values for every selected accuracy method
@@ -467,6 +469,7 @@ class CollaborativeFiltersSpl(object):
         u: Name of the column containing the user-IDs.
         i: Name of the column containing the item-IDs.
         r: Name of the column containing the ratings.
+        algorithms_avail: Dictionary of available algorithms with the location of the function as the value.
         algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
         accuracy_methods: Set or array of names for accuracy methods which to use for evaluation.
     """
@@ -474,7 +477,10 @@ class CollaborativeFiltersSpl(object):
     def __init__(self, items, item_columns, rating_scores, algorithms_args=None, accuracy_methods=None, log_level=None):
         self.items = items  # Transaction information in an itemized table
         self.u, self.i, self.r = item_columns  # User, Item, Rating/Transaction-Strength
-        self.algorithms_args = defaultdict() if algorithms_args is None else algorithms_args
+
+        self.algorithms_avail = {'SPL-SVD': spl.SVD, 'SPL-SVDpp': spl.SVDpp, 'SPL-NMF': spl.NMF, 'SPL-KNNWithMeans': spl.KNNWithMeans, 'SPL-KNNBasic': spl.KNNBasic, 'SPL-KNNWithZScore': spl.KNNWithZScore, 'SPL-KNNBaseline': spl.KNNBaseline, 'SPL-NormalPredictor': spl.NormalPredictor, 'SPL-CoClustering': spl.CoClustering, 'SPL-SlopeOne': spl.SlopeOne}
+
+        self.algorithms_args = dict.fromkeys(self.algorithms_avail.keys(), {}) if algorithms_args is None else algorithms_args
         self.accuracy_methods = {'RMSE', 'MAE'} if accuracy_methods is None else accuracy_methods
         # Keep track of the columns added to the dataframe
         self.algorithms_name = set()
@@ -495,11 +501,9 @@ class CollaborativeFiltersSpl(object):
         Args:
             n_folds: Number of folds to perform in cross-validation.
         """
-        spl_algorithms_avail = {'SPL-SVD': spl.SVD, 'SPL-SVDpp': spl.SVDpp, 'SPL-NMF': spl.NMF, 'SPL-KNNWithMeans': spl.KNNWithMeans, 'SPL-KNNBasic': spl.KNNBasic, 'SPL-KNNWithZScore': spl.KNNWithZScore, 'SPL-KNNBaseline': spl.KNNBaseline, 'SPL-NormalPredictor': spl.NormalPredictor, 'SPL-CoClustering': spl.CoClustering, 'SPL-SlopeOne': spl.SlopeOne}
-
         spl_algorithms = {}
-        for alg_name in np.intersect1d(list(spl_algorithms_avail.keys()), list(self.algorithms_args.keys())):
-            spl_algorithms[alg_name] = spl_algorithms_avail[alg_name](**self.algorithms_args[alg_name])
+        for alg_name in np.intersect1d(list(self.algorithms_avail.keys()), list(self.algorithms_args.keys())):
+            spl_algorithms[alg_name] = self.algorithms_avail[alg_name](**self.algorithms_args[alg_name])
 
         self.algorithms_name.update(spl_algorithms.keys())
 
@@ -577,6 +581,7 @@ class ContentFilers(object):
         content_items: Table containing the original input plus predictions for algorithms from the set in algorithms_name.
         t: Name of the column containing the input for the algorithms.
         tfidf_matrix: Matrix containing the TF-IDF features.
+        algorithms_avail: Dictionary of available algorithms with the location of the function as the value.
         algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
         accuracy_methods: Set or array of names for accuracy methods which to use for evaluation. Accepts a subset of {'RMSE', 'MAE', 'RecallAtPosition'}.
     """
@@ -589,7 +594,10 @@ class ContentFilers(object):
 
         self.content_items = content_items  # Item information in an itemized table
         self.accuracy_methods = {'RecallAtPosition'} if accuracy_methods is None else accuracy_methods
-        self.algorithms_args = defaultdict() if algorithms_args is None else algorithms_args
+
+        self.algorithms_avail = {'SKLearn-TfidfVectorizer': TfidfVectorizer}
+
+        self.algorithms_args = dict.fromkeys(self.algorithms_avail.keys(), {}) if algorithms_args is None else algorithms_args
         # Keep track of the columns added to the dataframe
         self.algorithms_name = set()
 
@@ -614,11 +622,9 @@ class ContentFilers(object):
         Args:
             n_random_non_interacted_items: Number of random non-interacted items which shall be used for calculating the accuracy metrics.
         """
-        content_algorithms_avail = {'SKLearn-TfidfVectorizer': TfidfVectorizer}
-
         content_algorithms = {}
-        for alg_name in np.intersect1d(list(content_algorithms_avail.keys()), list(self.algorithms_args.keys())):
-            content_algorithms[alg_name] = content_algorithms_avail[alg_name](**self.algorithms_args[alg_name])
+        for alg_name in np.intersect1d(list(self.algorithms_avail.keys()), list(self.algorithms_args.keys())):
+            content_algorithms[alg_name] = self.algorithms_avail[alg_name](**self.algorithms_args[alg_name])
 
         self.algorithms_name.update(content_algorithms.keys())
         alg_name, alg = 'SKLearn-TfidfVectorizer', content_algorithms['SKLearn-TfidfVectorizer']

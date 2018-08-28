@@ -1,6 +1,7 @@
 log_level: 10
 donations_filepath: data/donorschoose.org/Donations.csv
 projects_filepath: data/donorschoose.org/Projects.csv
+output_filepath: data/items.csv
 random_state_seed: 2718281828
 # Constant for the top-N accuracy metrics
 n_random_non_interacted_items: 100

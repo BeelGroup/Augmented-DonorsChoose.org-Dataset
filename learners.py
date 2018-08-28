@@ -17,6 +17,7 @@ with open('config.yml', 'r') as stream:
 log_level = config['log_level']
 donations_filepath = config['donations_filepath']
 projects_filepath = config['projects_filepath']
+output_filepath = config['output_filepath']
 random_state_seed = config['random_state_seed']
 n_random_non_interacted_items =  config['n_random_non_interacted_items']
 sampling_methods = config['sampling_methods']
@@ -88,3 +89,6 @@ algorithms_name.update(collab_filters.algorithms_name)
 content_filters = recsys.ContentFilers(items, ('DonorID', 'ProjectID', 'DonationAmount'), projects, ('ProjectTitle', 'ProjectShortDescription', 'ProjectNeedStatement', 'ProjectEssay'), algorithms_args=algorithms_args, accuracy_methods=accuracy_methods, log_level=log_level)
 items = content_filters.fit_all(n_random_non_interacted_items=n_random_non_interacted_items).items
 algorithms_name.update(content_filters.algorithms_name)
+
+if output_filepath is not None and output_filepath is not False:
+    items.to_csv(output_filepath)

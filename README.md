@@ -104,3 +104,47 @@ plt.tight_layout()
 plt.savefig('Collaborative Filters - RMSE for DIY algorithms and some baselines.pdf')
 plt.close()
 ```
+
+* Visualizing the Recall@N
+
+```python
+plt.figure()
+plt.grid(b=False, axis='x')
+
+algorithms_name = ['SKLearn-KNN', 'SKLearn-NMF', 'SKLearn-SVD', 'SciPy-SVD', 'SKLearn-TfidfVectorizer']
+algorithms_pretty_name = ['SKLearn-KNN', 'SKLearn-NMF', 'SKLearn-SVD', 'SciPy-SVD', 'SKLearn-TF-IDF']
+average_recall = [items['RecallAtPosition' + alg_name].mean() for alg_name in algorithms_name]
+
+plt.errorbar(np.arange(len(algorithms_name)), average_recall, xerr=0.45, markersize=0., ls='none')
+
+plt.xticks(np.arange(len(algorithms_pretty_name)), algorithms_pretty_name)
+plt.ylim(ymin=-1)
+
+plt.xlabel('Algorithm')
+plt.ylabel('Average position in Top-N test set')
+
+plt.gcf().autofmt_xdate()
+plt.tight_layout()
+
+plt.savefig('Collaborative and Content-based Filters - Average position in Top-N test set for various algorithms.pdf')
+plt.close()
+```
+
+```python
+plt.figure()
+plt.grid(b=False, axis='x')
+
+algorithms_name = ['SKLearn-KNN', 'SKLearn-SVD', 'SKLearn-TfidfVectorizer']
+algorithms_pretty_name = ['SKLearn-KNN', 'SKLearn-SVD', 'SKLearn-TF-IDF']
+
+plt.hist([items['RecallAtPosition' + alg_name] for alg_name in algorithms_name], bins=10, density=True, label=algorithms_pretty_name, histtype='step')
+
+plt.legend(loc=9)
+plt.xlabel('Position in Top-N test set')
+plt.ylabel('Frequency')
+
+plt.tight_layout()
+
+plt.savefig('Collaborative and Content-based Filters - Distribution of position in Top-N test set for various algorithms.pdf')
+plt.close()
+```

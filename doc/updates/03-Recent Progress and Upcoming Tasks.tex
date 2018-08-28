@@ -1,0 +1,198 @@
+\documentclass[aspectratio=169]{beamer}
+	\usepackage[utf8]{inputenc}		% Required for umlauts
+	\usepackage[english]{babel}		% Language
+	%\usepackage[sfdefault]{roboto}	% Enable sans serif font roboto
+	%\usepackage{libertine}			% Enable this on Windows to allow for microtype
+	\usepackage[T1]{fontenc}		% Required for output of umlauts in PDF
+
+	\usepackage{mathtools}		% Required for formulas
+
+	\usepackage{caption}		% Customize caption aesthetics
+	\usepackage{tcolorbox}		% Fancy colored boxes
+	\usepackage{xcolor}			% Highlighting
+	\usepackage{soul}
+
+	\usepackage{listings}		% Insert programming code
+	\usepackage{graphicx}		% Required to insert images
+	\usepackage{subcaption}		% Enable sub-figure
+	\usepackage[space]{grffile} % Insert images baring a filename which contains spaces
+	\usepackage{float}			% Allow to forcefully set the location of an object
+
+	\usepackage[tracking=true]{microtype} % Required to change character spacing
+
+	\usepackage[style=alphabetic,backend=biber,sorting=none,giveninits=true,isbn=false,url=false]{biblatex}
+	\usepackage{csquotes}		% Ensure proper quotation of texts with babel and polyglossia with biblatex
+	\usepackage{hyperref}		% Insert clickable references
+
+	\usepackage{datetime}		% Flexible date specification
+	\newcommand{\leadingzero}[1]{\ifnum#1<10 0\the#1\else\the#1\fi}
+	\newcommand{\todayddmmyyyy}{\leadingzero{\day}.\leadingzero{\month}.\the\year}
+	\newcommand{\mathcolorbox}[2]{\colorbox{#1}{$\displaystyle #2$}}
+
+	\usepackage{geometry}
+	\usepackage{scrextend}		% Allow arbitrary indentation
+
+	\usepackage{color}
+
+	\usepackage{appendixnumberbeamer}	% Fancy page numbering excluding the appendix
+
+	% Compile notes into a separate file readable by pdfpc using a custom package which overwrite the `note` macro
+	\usepackage{../pdfpcnotes}
+
+	\makeatletter
+	% Fix subfig in beamer style presentation
+	\let\@@magyar@captionfix\relax
+
+	% Insert [short title] for \section in ToC
+	\patchcmd{\beamer@section}{{#2}{\the\c@page}}{{#1}{\the\c@page}}{}{}
+	% Insert [short title] for \section in Navigation
+	\patchcmd{\beamer@section}{{\the\c@section}{\secname}}{{\the\c@section}{#1}}{}{}
+	% Insert [short title] for \subsection in ToC
+	\patchcmd{\beamer@subsection}{{#2}{\the\c@page}}{{#1}{\the\c@page}}{}{}
+	% Insert [short title] for \subsection in Navigation
+	\patchcmd{\beamer@subsection}{{\the\c@subsection}{#2}}{{\the\c@subsection}{#1}}{}{}
+	\makeatother
+
+	\addbibresource{../literature.bib}
+
+	\setbeamercolor{title}{fg=orange}
+	\setbeamertemplate{title}{
+		\color{orange}
+		\textbf{\inserttitle}
+	}
+	\setbeamercolor{tableofcontents}{fg=orange}
+	\setbeamercolor{section in toc}{fg=black}
+	\setbeamercolor{subsection in toc}{fg=black}
+	\setbeamertemplate{frametitle}{
+		%\vspace{0.5em}
+		\color{orange}
+		\begin{center}
+			\textbf{\insertframetitle} \\
+			{\small \insertframesubtitle}
+		\end{center}
+	}
+	\setbeamertemplate{footline}[text line]{
+		\parbox{\linewidth}{
+			\color{gray}
+			\vspace*{-1em}
+			NII 2018
+			\hfill
+			Gordian (\href{mailto:gordian.edenhofer@gmail.com}{gordian.edenhofer@gmail.com})
+			\hfill
+			\insertframenumber/\inserttotalframenumber%
+		}
+	}
+	\setbeamertemplate{navigation symbols}{}
+	\setbeamertemplate{itemize item}{\color{black}$\bullet$}
+	\setbeamertemplate{itemize subitem}{\color{black}$\circ$}
+	\setbeamercolor{block title}{fg=black}
+	\captionsetup{font=scriptsize,labelfont={bf,scriptsize}}
+
+	\lstset{basicstyle=\ttfamily,breaklines=true,showstringspaces=false,commentstyle=\color{red},keywordstyle=\color{blue}}
+
+	\title{Meta-Learning~for~Recommender~Systems}
+	\subtitle{``learning to learn''}
+	\author[Edenhofer]{\href{mailto:gordian.edenhofer@gmail.com}{Gordian Edenhofer}}
+	\institute[NII]{
+		Working Group of Prof.~Dr.~Beel, Trinity College Dublin \\
+		Department of Prof.~Dr.~Akiko~Aizawa, Nationa Institute of Informatics
+	}
+	\date[Research Internship 2018]{National Institute of Informatics, \formatdate{28}{08}{2018}}
+	\subject{Natural Language Processing and Machine Translation}
+
+
+\begin{document}
+
+\pagenumbering{arabic}
+
+\begin{frame}[plain,noframenumbering]
+	\titlepage%
+\end{frame}
+
+\section{Current Progress}
+\frame{\vfill\centering\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/hide]\vfill}
+
+\subsection{Git Log}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Implement content-based filtering techniques, i.e. TF-IDF
+		\item Recall@N accuracy method
+		\begin{itemize}
+			\item Overall suitable accuracy method
+			\item Honors peculiarity of recommender systems
+		\end{itemize}
+		\note{RMSE, MAE unsuitable for content-based algorithms}
+		\note{Investigate Top-N accuracy method (here, Recall@N)}
+		\item Brief exploration of content-based methods using neural-networks
+		\begin{itemize}
+			\item Deep learning in recommender system~\cite{DBLP:journals/corr/abs-1712-07525}
+			\item FastText as word representation learner (word-embedding)~\cite{DBLP:journals/corr/BojanowskiGJM16,rehurek_lrec}
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\subsection{Visualization}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{figure}
+		\centering
+		\includegraphics[width=\textwidth,height=0.6\textheight,keepaspectratio]{{{../res/Collaborative and Content-based Filters - Average position in Top-N test set for various algorithms}}}
+		\caption{Mean positon of the project to which the user donated to in a set of $100$ projects the user has not donated to. Results are shown for different collaborative and content-based algorithms.}
+	\end{figure}
+	\note{Highlights the fact that RMSE and MAE are unsuitable accuracy methods}
+	\note{Reveals poor recommendation accuracy for Collaborative filtering techniques}
+\end{frame}
+
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{figure}
+		\centering
+		\includegraphics[width=\textwidth,height=0.6\textheight,keepaspectratio]{{{../res/Collaborative and Content-based Filters - Distribution of position in Top-N test set for various algorithms}}}
+		\caption{Distribution of the positon of the project to which the user donated to in a set of $100$ projects the user has not donated to. Results are shown for subset of collaborative and content-based algorithms.}
+	\end{figure}
+	\note{TF-IDF extraordinarily good performer}
+	\note{TF-IDF may be too good as there very seldomly might be a use for which an other alogrithm is better}
+\end{frame}
+
+\section{Next Steps}
+\frame{\vfill\centering\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/hide]\vfill}
+
+\subsection{TO-DO}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Implement content-based neural network approach employing e.g.:
+		\begin{itemize}
+			\item Gensims \lstinline{doc2vec} (based on \lstinline{word2vec})
+			\item Manual vector-averaging of fastText word-embeddings
+		\end{itemize}
+		\item Grand comparison of available algorithms
+		\item Add further meta-variables
+		\begin{itemize}
+			\item \#Donations per user
+			\item User location information
+			\item \ldots
+		\end{itemize}
+		\note{Ensure to properly split training and test data}
+	\end{itemize}
+\end{frame}
+
+\appendix
+
+\section*{Bibliography}
+\begin{frame}[shrink=10]
+	\frametitle{\insertsection}
+
+	\printbibliography%
+\end{frame}
+
+\end{document}

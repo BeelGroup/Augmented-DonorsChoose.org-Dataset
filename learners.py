@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 
 import logging
-import os
 
 import numpy as np
 import pandas as pd
-import surprise as spl
 import yaml
 
 import recsys

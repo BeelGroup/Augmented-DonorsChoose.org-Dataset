@@ -41,6 +41,9 @@ donations = donations[donations['ProjectID'].isin(projects['ProjectID'])]
 # Sum up duplicate donations unconditionally; Hence do not try to predict projects which the donor has already donated to
 items = donations.groupby(['DonorID', 'ProjectID'])['DonationAmount'].sum().reset_index()
 
+# Remove special delimiter keyword from item description
+projects['ProjectEssay'] = projects['ProjectEssay'].str.replace('<!--DONOTREMOVEESSAYDIVIDER-->', '', regex=False)
+
 # Apply the cleaning and sampling operations in a fixed order independently of the order of the dict or the user's choice
 sampling_methods_priority = {'drop_raw_values': 200, 'frequency_boundaries': 500, 'sample': 900}
 for method, opt in sorted(sampling_methods.items(), key=lambda x: sampling_methods_priority[x[0]]):

@@ -4,6 +4,7 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 import surprise as spl
+from gensim.models import FastText
 from scipy.sparse import csr_matrix
 from scipy.sparse.linalg import svds
 from sklearn.decomposition import NMF, TruncatedSVD
@@ -12,6 +13,7 @@ from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.metrics.pairwise import cosine_similarity
 from sklearn.model_selection import KFold, LeaveOneOut
 from sklearn.neighbors import NearestNeighbors
+from sklearn.preprocessing import normalize
 from surprise.model_selection import KFold as spl_KFold
 from surprise.reader import Reader as spl_Reader
 
@@ -588,7 +590,7 @@ class ContentFilers(object):
         r: Name of the column containing the ratings.
         content_items: Table containing the original input plus predictions for algorithms from the set in algorithms_name.
         t: Name of the column containing the input for the algorithms.
-        tfidf_matrix: Matrix containing the TF-IDF features.
+        content_matrix: Matrix containing the TF-IDF features.
         algorithms_avail: Dictionary of available algorithms with the location of the function as the value.
         algorithms_args: Arguments in the form of a dictionary for each algorithm to be used.
         accuracy_methods: Set or array of names for accuracy methods which to use for evaluation. Accepts a subset of {'RMSE', 'MAE', 'RecallAtPosition'}.
@@ -603,13 +605,13 @@ class ContentFilers(object):
         self.content_items = content_items  # Item information in an itemized table
         self.accuracy_methods = {'RecallAtPosition'} if accuracy_methods is None else accuracy_methods
 
-        self.algorithms_avail = {'SKLearn-TfidfVectorizer': TfidfVectorizer}
+        self.algorithms_avail = {'SKLearn-TfidfVectorizer': TfidfVectorizer, 'Gensim-FastText': self.GensimFastText}
 
         self.algorithms_args = dict.fromkeys(self.algorithms_avail.keys(), {}) if algorithms_args is None else algorithms_args
         # Keep track of the columns added to the dataframe
         self.algorithms_name = set()
 
-        self.tfidf_matrix = np.nan
+        self.content_matrix = np.nan
 
         log_level = 10 if log_level is None else log_level
         self._logger = logging.getLogger(self.__class__.__name__)
@@ -621,6 +623,9 @@ class ContentFilers(object):
         for column in content_item_columns:
             self.content_items[self.t] += ' ' + self.content_items[column]
         self.content_items = self.content_items[[self.i, self.t]]
+
+        # Remove characters which may prohibit a proper content matching
+        self.content_items[self.t] = self.content_items[self.t].str.replace(r"[\"\'\\n\\t\d]", '', regex=True)
 
     def fit_all(self, n_random_non_interacted_items=100):
         """Fit everything and return the instance of the class.
@@ -639,49 +644,49 @@ class ContentFilers(object):
             return self
 
         self.algorithms_name.update(content_algorithms.keys())
-        alg_name, alg = 'SKLearn-TfidfVectorizer', content_algorithms['SKLearn-TfidfVectorizer']
 
-        content_item_ids = self.content_items[self.i].values
-        self.tfidf_matrix = alg.fit_transform(self.content_items[self.t])
-        # One may pretty print actual words/n-grams instead of positions in arrays using `tfidf_feature_names = alg.get_feature_names()`
+        for alg_name, alg in sorted(content_algorithms.items(), key=lambda x: x[0]):
+            content_item_ids = self.content_items[self.i].values
+            self.content_matrix = alg.fit_transform(self.content_items[self.t])
+            # One may pretty print actual words/n-grams instead of positions in arrays using `tfidf_feature_names = alg.get_feature_names()`
 
-        for acc_name in sorted(self.accuracy_methods):
-            if acc_name == 'RMSE':
-                continue
-            elif acc_name == 'MAE':
-                continue
-            elif acc_name == 'RecallAtPosition':
-                self.items['RecallAtPosition' + alg_name] = np.nan
-                loo = LeaveOneOut()
-                for user in self.items[self.u].unique():  # This loop is computationally expensive
-                    user_items = self.items[self.items[self.u] == user]
-                    user_item_idx = np.isin(content_item_ids, user_items[self.i])
-                    user_features = self.tfidf_matrix[user_item_idx]
+            for acc_name in sorted(self.accuracy_methods):
+                if acc_name == 'RMSE':
+                    continue
+                elif acc_name == 'MAE':
+                    continue
+                elif acc_name == 'RecallAtPosition':
+                    self.items['RecallAtPosition' + alg_name] = np.nan
+                    loo = LeaveOneOut()
+                    for user in self.items[self.u].unique():  # This loop is computationally expensive
+                        user_items = self.items[self.items[self.u] == user]
+                        user_item_idx = np.isin(content_item_ids, user_items[self.i])
+                        user_features = self.content_matrix[user_item_idx]
 
-                    # Single out one interacted item to use for testing using integer indices
-                    for train_user_features_idx, test_user_features_idx in loo.split(user_features):
-                        test_user_feature = user_items[self.i].iloc[test_user_features_idx].values
+                        # Single out one interacted item to use for testing using integer indices
+                        for train_user_features_idx, test_user_features_idx in loo.split(user_features):
+                            test_user_feature = user_items[self.i].iloc[test_user_features_idx].values
 
-                        # Multiply each item's feature with the user's rating of the item and divide the result by the sum of all ratings made by the user
-                        content_train_users_profiles = user_features[train_user_features_idx].transpose().dot(user_items[self.r].iloc[train_user_features_idx].values)
-                        content_train_users_profiles = content_train_users_profiles / user_items[self.r].iloc[train_user_features_idx].sum()
+                            # Multiply each item's feature with the user's rating of the item and divide the result by the sum of all ratings made by the user
+                            content_train_users_profiles = user_features[train_user_features_idx].transpose().dot(user_items[self.r].iloc[train_user_features_idx].values)
+                            content_train_users_profiles = content_train_users_profiles / user_items[self.r].iloc[train_user_features_idx].sum()
 
-                        # Create an array of items which the user has not interacted with yet plus one with which an interaction took place
-                        non_rated_user_items_ids = np.setdiff1d(content_item_ids, user_items[self.i])
-                        top_test_choice = np.append(np.random.choice(np.array(non_rated_user_items_ids), n_random_non_interacted_items), test_user_feature)
-                        top_test_idx = np.isin(content_item_ids, top_test_choice)
+                            # Create an array of items which the user has not interacted with yet plus one with which an interaction took place
+                            non_rated_user_items_ids = np.setdiff1d(content_item_ids, user_items[self.i])
+                            top_test_choice = np.append(np.random.choice(np.array(non_rated_user_items_ids), n_random_non_interacted_items), test_user_feature)
+                            top_test_idx = np.isin(content_item_ids, top_test_choice)
 
-                        # Calculate the similarity and retrieve the position of the test id within the recommended set
-                        cosine_similarities = cosine_similarity(content_train_users_profiles.reshape(1, -1), self.tfidf_matrix[top_test_idx]).flatten()
-                        sorted_similarities_indices = (-1 * cosine_similarities).argsort()
-                        sorted_item_ids = content_item_ids[top_test_idx][sorted_similarities_indices]
-                        pos = np.where(sorted_item_ids == test_user_feature[0])[0][0]
+                            # Calculate the similarity and retrieve the position of the test id within the recommended set
+                            cosine_similarities = cosine_similarity(content_train_users_profiles.reshape(1, -1), self.content_matrix[top_test_idx]).flatten()
+                            sorted_similarities_indices = (-1 * cosine_similarities).argsort()
+                            sorted_item_ids = content_item_ids[top_test_idx][sorted_similarities_indices]
+                            pos = np.where(sorted_item_ids == test_user_feature[0])[0][0]
 
-                        self.items.at[(self.items[self.u] == user) & (self.items[self.i] == test_user_feature[0]), 'RecallAtPosition' + alg_name] = pos
+                            self.items.at[(self.items[self.u] == user) & (self.items[self.i] == test_user_feature[0]), 'RecallAtPosition' + alg_name] = pos
 
         # Overall accuracy
         for alg_name in sorted(self.algorithms_name):
-            log_line = '{:<20s} (overall) ::'.format(alg_name)
+            log_line = '{:<25s} (overall) ::'.format(alg_name)
             for acc_name in sorted(self.accuracy_methods):
                 if acc_name == 'RMSE':
                     continue
@@ -697,3 +702,65 @@ class ContentFilers(object):
             self._logger.info(log_line)
 
         return self
+
+    class GensimFastText(object):
+        """Gensim's FastText algorithm adapted for Recommender System tasks.
+
+        Word embedding for document similarity comparisons.
+
+        Methods:
+            fit_transform(X[, y]): Fit model to training data and return the estimate for the input - with target y being ignored.
+            estimate(X): Predict target using fitted model.
+        """
+
+        def __init__(self, fasttext_model_file=None, **kwargs):
+            """Initialize internal attributes of the class.
+
+            Args:
+                fasttext_model_file: Path to a model file in fastText format.
+                kwargs: Dictionary of additional arguments which are passed to the underlying algorithm.
+            """
+            if fasttext_model_file is None:
+                self.ft = FastText(**kwargs)
+            else:
+                self.ft = FastText.load_fasttext_format(fasttext_model_file, **kwargs)
+
+        def _transform(self, input_set):
+            input_set = input_set.str.split(r'\.\!\?; ')
+            # Strip empty elements from the lists contained in the table
+            input_set = input_set.apply(lambda x: list(filter(None, x)))
+
+            content_matrix = np.zeros((input_set.shape[0], self.ft.wv.vector_size))
+            for idx in range(content_matrix.shape[0]):
+                content_matrix[idx] = self.ft.wv[input_set.iloc[idx]].sum(axis=0)
+
+            content_matrix = normalize(content_matrix, axis=1)
+
+            return content_matrix
+
+        def fit_transform(self, train_set, y=None):
+            """Perform the document feature assimilation via utilizing the gathered word embeddings, store the resulting parameters for later estimations and return the final estimate for the input.
+
+            Args:
+                train_set: Dataset used for training.
+                y: Ignored optional target variable; present only for compatibility reasons.
+                _internal_init_sims: Internally used variable to indicate whether the vectors should be normalized.
+
+            Returns:
+                self: The instance of the fitted model.
+            """
+            # Normalize the feature vectors; this prohibits further training
+            self.ft.init_sims(replace=True)
+
+            return self._transform(train_set)
+
+        def estimate(self, test_set):
+            """Return an estimate of the given input data using the fit parameters of the model.
+
+            Args:
+                test_set: Dataset used for training.
+
+            Returns:
+                Estimation of the set using the fitted model for transformation.
+            """
+            return self._transform(test_set)

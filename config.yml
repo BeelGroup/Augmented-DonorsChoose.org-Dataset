@@ -43,6 +43,8 @@ algorithms_args:
         lowercase: True
         max_df: 0.9
         max_features: 5000
+    Gensim-FastText:
+        fasttext_model_file: './data/wiki.en.bin'
 accuracy_methods:
     - 'RMSE'
     - 'MAE'

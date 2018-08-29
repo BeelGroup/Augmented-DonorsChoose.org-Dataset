@@ -17,7 +17,7 @@ donations_filepath = config['donations_filepath']
 projects_filepath = config['projects_filepath']
 output_filepath = config['output_filepath']
 random_state_seed = config['random_state_seed']
-n_random_non_interacted_items =  config['n_random_non_interacted_items']
+n_random_non_interacted_items = config['n_random_non_interacted_items']
 sampling_methods = config['sampling_methods']
 n_folds = config['n_folds']
 algorithms_args = config['algorithms_args']
@@ -34,12 +34,11 @@ projects = pd.read_csv(projects_filepath)
 # Get rid of pesky whitespaces in column names (pandas' query convenience function e.g. is allergic to them)
 donations.columns = donations.columns.str.replace(' ', '')
 projects.columns = projects.columns.str.replace(' ', '')
+
 # Unconditionally drop donations which have no associated project (why do those kind or transations even exist?!)
 donations = donations[donations['ProjectID'].isin(projects['ProjectID'])]
-
 # Sum up duplicate donations unconditionally; Hence do not try to predict projects which the donor has already donated to
 items = donations.groupby(['DonorID', 'ProjectID'])['DonationAmount'].sum().reset_index()
-
 # Remove special delimiter keyword from item description
 projects['ProjectEssay'] = projects['ProjectEssay'].str.replace('<!--DONOTREMOVEESSAYDIVIDER-->', '', regex=False)
 

@@ -192,7 +192,7 @@ class CollaborativeFilters(object):
                             self.items['SquareError' + alg_name] = np.nan
 
                         test_item_idx = self.items['SquareError' + alg_name].isna() & self.items['Prediction' + alg_name].notna()
-                        self.items.at[test_item_idx, 'SquareError' + alg_name] =  np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
+                        self.items.at[test_item_idx, 'SquareError' + alg_name] = np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
 
                         train_acc = rmse(train_predictions, self.sparse_rating_matrix[train_idx].sorted_indices())
                         test_acc = rmse(test_predictions, self.sparse_rating_matrix[test_idx].sorted_indices())
@@ -201,7 +201,7 @@ class CollaborativeFilters(object):
                             self.items['AbsoluteError' + alg_name] = np.nan
 
                         test_item_idx = self.items['AbsoluteError' + alg_name].isna() & self.items['Prediction' + alg_name].notna()
-                        self.items.at[test_item_idx, 'AbsoluteError' + alg_name] =  np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
+                        self.items.at[test_item_idx, 'AbsoluteError' + alg_name] = np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
 
                         train_acc = mae(train_predictions, self.sparse_rating_matrix[train_idx].sorted_indices())
                         test_acc = mae(test_predictions, self.sparse_rating_matrix[test_idx].sorted_indices())
@@ -535,13 +535,13 @@ class CollaborativeFiltersSpl(object):
                             self.items['SquareError' + alg_name] = np.nan
 
                         test_item_idx = self.items['SquareError' + alg_name].isna() & self.items['Prediction' + alg_name].notna()
-                        self.items.at[test_item_idx, 'SquareError' + alg_name] =  np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
+                        self.items.at[test_item_idx, 'SquareError' + alg_name] = np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
                     elif acc_name == 'MAE':
                         if 'AbsoluteError' + alg_name not in self.items:
                             self.items['AbsoluteError' + alg_name] = np.nan
 
                         test_item_idx = self.items['AbsoluteError' + alg_name].isna() & self.items['Prediction' + alg_name].notna()
-                        self.items.at[test_item_idx, 'AbsoluteError' + alg_name] =  np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
+                        self.items.at[test_item_idx, 'AbsoluteError' + alg_name] = np.square(self.items[test_item_idx][self.r] - self.items[test_item_idx]['Prediction' + alg_name])
                     elif acc_name == 'RecallAtPosition':
                         continue
                     else:

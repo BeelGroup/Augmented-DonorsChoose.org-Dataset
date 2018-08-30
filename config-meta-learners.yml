@@ -19,3 +19,11 @@ algorithm_selection_methods:
     - accuracy prediction
 n_splits: 1
 train_size: 0.8
+meta_algorithms_args:
+    SKLearn-AdaBoostClassifier: {}
+    SKLearn-BaggingClassifier: {}
+    SKLearn-ExtraTreesClassifier: {}
+    SKLearn-GradientBoostingClassifier: {}
+    SKLearn-RandomForestClassifier: {}
+    SKLearn-DecisionTreeClassifier: {}
+    SKLearn-ExtraTreeClassifier: {}

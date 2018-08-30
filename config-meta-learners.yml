@@ -5,8 +5,6 @@ projects_filepath: data/donorschoose.org/Projects.csv
 donors_filepath: data/donorschoose.org/Donors.csv
 output_filepath: data/meta-learner-items.csv
 random_state_seed: 2718281828
-# Constant for the top-N accuracy metrics
-n_random_non_interacted_items: 100
 algorithms_name:
     - SciPy-SVD
     - SKLearn-SVD
@@ -15,6 +13,5 @@ algorithms_name:
     - SKLearn-TfidfVectorizer
     - Gensim-FastText
 algorithms_accuracy_name: ['RecallAtPosition']
-rating_scores: [1, 2, 3, 4, 5]
 n_splits: 1
 train_size: 0.8

@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
 
+import itertools
 import logging
 
 import numpy as np
 import pandas as pd
 import yaml
 from sklearn.model_selection import ShuffleSplit
+from sklearn.tree import DecisionTreeClassifier
 
 with open('config-meta-learners.yml', 'r') as stream:
     config = yaml.load(stream)
@@ -19,7 +21,8 @@ donors_filepath = config['donors_filepath']
 output_filepath = config['output_filepath']
 random_state_seed = config['random_state_seed']
 n_random_non_interacted_items = config['n_random_non_interacted_items']
-accuracy_methods = config['accuracy_methods']
+algorithms_name = config['algorithms_name']
+algorithms_accuracy_name = config['algorithms_accuracy_name']
 rating_scores = config['rating_scores']
 n_splits = config['n_splits']
 train_size = config['train_size']
@@ -44,6 +47,9 @@ donations = donations[donations['ProjectID'].isin(projects['ProjectID'])]
 donations = donations.drop_duplicates(subset=['DonorID', 'ProjectID'], keep='first')
 donations['DonationReceivedDate'] = pd.to_datetime(donations['DonationReceivedDate'])
 
+# Keep track of all columns which shall be used for training
+feature_columns = set()
+
 # Preprocessing: Add additional information about the item, user and transaction to the meta-features table
 projects_cat_columns = ['ProjectSubjectCategoryTree', 'ProjectSubjectSubcategoryTree', 'ProjectResourceCategory', 'ProjectGradeLevelCategory']
 donors_cat_columns = ['DonorState', 'DonorCity', 'DonorZip', 'DonorIsTeacher']
@@ -56,19 +62,34 @@ for df_cat, cat_columns, merge_on_column in [
 
     meta_items = pd.merge(meta_items, df_cat[np.append(cat_columns, merge_on_column)], on=merge_on_column, how='left', sort=False)
 
+feature_columns.update(projects_cat_columns, donors_cat_columns)
+
 # Preprocessing: Merge in the day of week in addition to the hour and minute as further meta-feature
 donations['DonationReceivedDateDayOfWeek'] = donations['DonationReceivedDate'].dt.dayofweek
 donations['DonationReceivedDateTimeOfDay'] = donations['DonationReceivedDate'].dt.hour * 60 + donations['DonationReceivedDate'].dt.minute
 meta_items = pd.merge(meta_items, donations[['DonorID', 'ProjectID', 'DonationReceivedDateDayOfWeek', 'DonationReceivedDateTimeOfDay']], on=['DonorID', 'ProjectID'], how='left', sort=False)
+feature_columns.update(['DonationReceivedDateDayOfWeek', 'DonationReceivedDateTimeOfDay'])
 
+i = 0
 rs = ShuffleSplit(n_splits=n_splits, train_size=train_size, test_size=None)
 for train_idx, test_idx in rs.split(meta_items):
+    i += 1
+
     # Preprocessing: Add further information to the meta-features table which is test-train specific
     val_count_columns = ['DonorID', 'ProjectID']
-    for idx in [train_idx, test_idx]:
-        for c in val_count_columns:
-            value_counts = meta_items.loc[idx][c].value_counts(sort=False).reset_index().rename(columns={'index': c, c: 'ValueCounts' + c})
-            meta_items.at[idx, 'ValueCounts' + c] = pd.merge(meta_items[[c]], value_counts, on=c, how='left', sort=False).loc[idx]['ValueCounts' + c]
+    for idx, c in itertools.product([train_idx, test_idx], val_count_columns):
+        value_counts = meta_items.loc[idx][c].value_counts(sort=False).reset_index().rename(columns={'index': c, c: 'ValueCounts' + c})
+        meta_items.at[idx, 'ValueCounts' + c] = pd.merge(meta_items[[c]], value_counts, on=c, how='left', sort=False).loc[idx]['ValueCounts' + c]
+
+    meta_alg = DecisionTreeClassifier()
+    for acc_name, alg_name in itertools.product(algorithms_accuracy_name, algorithms_name):
+        meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx][acc_name + alg_name])
+        alg_prediction = meta_alg.predict(meta_items.loc[test_idx][sorted(feature_columns)])
+
+        err = alg_prediction - meta_items.loc[test_idx][acc_name + alg_name]
+        rmse = np.sqrt(np.square(err).mean())
+        mae = np.abs(err).mean()
+        logging.info('{acc_name:>18s} for {alg_name:<25s} (shuffle {i:>d}/{n_splits:<d}) :: | Test-RMSE: {:>7.2f} | Test-MAE: {:>7.2f}'.format(rmse, mae, i=i, n_splits=n_splits, acc_name=acc_name, alg_name=alg_name))
 
 if output_filepath is not None and output_filepath is not False:
     meta_items.to_csv(output_filepath)

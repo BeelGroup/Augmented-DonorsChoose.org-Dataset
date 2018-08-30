@@ -81,15 +81,35 @@ for train_idx, test_idx in rs.split(meta_items):
         value_counts = meta_items.loc[idx][c].value_counts(sort=False).reset_index().rename(columns={'index': c, c: 'ValueCounts' + c})
         meta_items.at[idx, 'ValueCounts' + c] = pd.merge(meta_items[[c]], value_counts, on=c, how='left', sort=False).loc[idx]['ValueCounts' + c]
 
-    meta_alg = DecisionTreeClassifier()
-    for acc_name, alg_name in itertools.product(algorithms_accuracy_name, algorithms_name):
-        meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx][acc_name + alg_name])
-        alg_prediction = meta_alg.predict(meta_items.loc[test_idx][sorted(feature_columns)])
+    for acc_name in algorithms_accuracy_name:
+        # Convert between column names
+        alg_acc_to_alg_columns = {acc_name + alg_name: alg_name for alg_name in algorithms_name}
 
-        err = alg_prediction - meta_items.loc[test_idx][acc_name + alg_name]
-        rmse = np.sqrt(np.square(err).mean())
-        mae = np.abs(err).mean()
-        logging.info('{acc_name:>18s} for {alg_name:<25s} (shuffle {i:>d}/{n_splits:<d}) :: | Test-RMSE: {:>7.2f} | Test-MAE: {:>7.2f}'.format(rmse, mae, i=i, n_splits=n_splits, acc_name=acc_name, alg_name=alg_name))
+        alg_comparison = meta_items.loc[test_idx][sorted(alg_acc_to_alg_columns.keys())].mean(axis=0)
+        best_alg_idx = alg_comparison.idxmin()
+        best_alg = alg_acc_to_alg_columns[best_alg_idx], alg_comparison[best_alg_idx]
+        combined_best = 'combined', meta_items.loc[test_idx][sorted(alg_acc_to_alg_columns.keys())].min(axis=1).mean()
+
+        logging.info('{acc_name:<16s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) :: | {:^25s} | Test-{acc_name}: {:>7.2f}'.format('overall best', *best_alg, i=i, n_splits=n_splits, acc_name=acc_name))
+        logging.info('{acc_name:<16s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) :: | {:^25s} | Test-{acc_name}: {:>7.2f}'.format('combined best', *combined_best, i=i, n_splits=n_splits, acc_name=acc_name))
+
+        meta_alg_name, meta_alg = 'DecisionTree', DecisionTreeClassifier()
+        for alg_name in algorithms_name:
+            meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx][acc_name + alg_name])
+            meta_items.at[test_idx, 'Prediction' + meta_alg_name + acc_name + alg_name] = meta_alg.predict(meta_items.loc[test_idx][sorted(feature_columns)])
+
+            err = meta_items.loc[test_idx]['Prediction' + meta_alg_name + acc_name + alg_name] - meta_items.loc[test_idx][acc_name + alg_name]
+            rmse = np.sqrt(np.square(err).mean())
+            mae = np.abs(err).mean()
+            logging.debug('Prediction {acc_name:<16s}{alg_name:<25s} (shuffle {i:>d}/{n_splits:<d}) :: | Test-RMSE: {:>7.2f} | Test-MAE: {:>7.2f}'.format(rmse, mae, i=i, n_splits=n_splits, acc_name=acc_name, alg_name=alg_name))
+
+        meta_alg_to_alg_acc_columns = {'Prediction' + meta_alg_name + acc_name + alg_name: acc_name + alg_name for alg_name in algorithms_name}
+        # Look up the lowest prediction made by the meta-learning algorithm and select the column which contains the actual result
+        predict_alg_acc_columns = meta_items.loc[test_idx][sorted(meta_alg_to_alg_acc_columns.keys())].idxmin(axis=1).astype('category').cat.rename_categories(meta_alg_to_alg_acc_columns)
+
+        meta_items.at[test_idx, 'MetaPrediction' + meta_alg_name] = meta_items.lookup(test_idx, predict_alg_acc_columns)
+        best_meta = 'meta', meta_items.loc[test_idx]['MetaPrediction' + meta_alg_name].mean()
+        logging.info('{acc_name:<16s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) :: | {:^25s} | Test-{acc_name}: {:>7.2f}'.format('meta', *best_meta, i=i, n_splits=n_splits, acc_name=acc_name))
 
 if output_filepath is not None and output_filepath is not False:
     meta_items.to_csv(output_filepath)

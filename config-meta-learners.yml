@@ -13,5 +13,9 @@ algorithms_name:
     - SKLearn-TfidfVectorizer
     - Gensim-FastText
 algorithms_accuracy_name: ['RecallAtPosition']
+# Process by which to select the algorithm from the learning subsystem; a subsect of {'classification', 'accuracy prediction'}
+algorithm_selection_methods:
+    - classification
+    - accuracy prediction
 n_splits: 1
 train_size: 0.8

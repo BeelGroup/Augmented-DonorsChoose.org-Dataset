@@ -22,6 +22,7 @@ output_filepath = config['output_filepath']
 random_state_seed = config['random_state_seed']
 algorithms_name = config['algorithms_name']
 algorithms_accuracy_name = config['algorithms_accuracy_name']
+algorithm_selection_methods = config['algorithm_selection_methods']
 n_splits = config['n_splits']
 train_size = config['train_size']
 
@@ -92,22 +93,38 @@ for train_idx, test_idx in rs.split(meta_items):
         logging.info('{acc_name:<16s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) :: | {:^25s} | Test-{acc_name}: {:>7.2f}'.format('combined best', *combined_best, i=i, n_splits=n_splits, acc_name=acc_name))
 
         meta_alg_name, meta_alg = 'DecisionTree', DecisionTreeClassifier()
-        for alg_name in algorithms_name:
-            meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx][acc_name + alg_name])
-            meta_items.at[test_idx, 'Prediction' + meta_alg_name + acc_name + alg_name] = meta_alg.predict(meta_items.loc[test_idx][sorted(feature_columns)])
+        if 'accuracy prediction' in algorithm_selection_methods:
+            for alg_name in algorithms_name:
+                meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx][acc_name + alg_name])
+                meta_items.at[test_idx, 'Prediction' + meta_alg_name + acc_name + alg_name] = meta_alg.predict(meta_items.loc[test_idx][sorted(feature_columns)])
 
-            err = meta_items.loc[test_idx]['Prediction' + meta_alg_name + acc_name + alg_name] - meta_items.loc[test_idx][acc_name + alg_name]
-            rmse = np.sqrt(np.square(err).mean())
-            mae = np.abs(err).mean()
-            logging.debug('Prediction {acc_name:<16s}{alg_name:<25s} (shuffle {i:>d}/{n_splits:<d}) :: | Test-RMSE: {:>7.2f} | Test-MAE: {:>7.2f}'.format(rmse, mae, i=i, n_splits=n_splits, acc_name=acc_name, alg_name=alg_name))
+                err = meta_items.loc[test_idx]['Prediction' + meta_alg_name + acc_name + alg_name] - meta_items.loc[test_idx][acc_name + alg_name]
+                rmse = np.sqrt(np.square(err).mean())
+                mae = np.abs(err).mean()
+                logging.debug('Prediction {acc_name:<16s}{alg_name:<25s} (shuffle {i:>d}/{n_splits:<d}) :: | Test-RMSE: {:>7.2f} | Test-MAE: {:>7.2f}'.format(rmse, mae, i=i, n_splits=n_splits, acc_name=acc_name, alg_name=alg_name))
 
-        meta_alg_to_alg_acc_columns = {'Prediction' + meta_alg_name + acc_name + alg_name: acc_name + alg_name for alg_name in algorithms_name}
-        # Look up the lowest prediction made by the meta-learning algorithm and select the column which contains the actual result
-        predict_alg_acc_columns = meta_items.loc[test_idx][sorted(meta_alg_to_alg_acc_columns.keys())].idxmin(axis=1).astype('category').cat.rename_categories(meta_alg_to_alg_acc_columns)
+            meta_alg_to_alg_acc_columns = {'Prediction' + meta_alg_name + acc_name + alg_name: acc_name + alg_name for alg_name in algorithms_name}
+            # Look up the lowest prediction made by the meta-learning algorithm and select the column which contains the actual result
+            predict_alg_acc_columns = meta_items.loc[test_idx][sorted(meta_alg_to_alg_acc_columns.keys())].idxmin(axis=1).astype('category').cat.rename_categories(meta_alg_to_alg_acc_columns)
 
-        meta_items.at[test_idx, 'MetaPrediction' + meta_alg_name] = meta_items.lookup(test_idx, predict_alg_acc_columns)
-        best_meta = 'meta', meta_items.loc[test_idx]['MetaPrediction' + meta_alg_name].mean()
-        logging.info('{acc_name:<16s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) :: | {:^25s} | Test-{acc_name}: {:>7.2f}'.format('meta', *best_meta, i=i, n_splits=n_splits, acc_name=acc_name))
+            meta_items.at[test_idx, 'MetaPrediction' + meta_alg_name] = meta_items.lookup(test_idx, predict_alg_acc_columns)
+            best_meta = 'meta accuracy', meta_items.loc[test_idx]['MetaPrediction' + meta_alg_name].mean()
+            logging.info('{acc_name:<16s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) :: | {:^25s} | Test-{acc_name}: {:>7.2f}'.format('meta acc', *best_meta, i=i, n_splits=n_splits, acc_name=acc_name))
+
+        if 'classification' in algorithm_selection_methods:
+            # Treat the best performing algorithm of a row as the row's class
+            meta_items['SubalgorithmCategory'] = meta_items[sorted(alg_acc_to_alg_columns.keys())].idxmin(axis=1).astype('category')
+
+            # Pass the raw category name to the fit method as it is expected that it can cope with strings
+            meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx]['SubalgorithmCategory'])
+            meta_items.at[test_idx, 'SubalgorithmPrediction' + meta_alg_name + acc_name] = meta_alg.predict(meta_items.loc[test_idx][sorted(feature_columns)])
+
+            classification_accuracy = (meta_items.loc[test_idx]['SubalgorithmCategory'] == meta_items.loc[test_idx]['SubalgorithmPrediction' + meta_alg_name + acc_name]).mean()
+            logging.debug('Subalgorithm-Prediction {acc_name:<16s} (shuffle {i:>d}/{n_splits:<d}) :: | Test-Accuracy: {:>7.2%}'.format(classification_accuracy, i=i, n_splits=n_splits, acc_name=acc_name))
+
+            meta_items.at[test_idx, 'MetaSubalgorithmPrediction' + meta_alg_name] = meta_items.lookup(test_idx, meta_items.loc[test_idx]['SubalgorithmPrediction' + meta_alg_name + acc_name])
+            best_meta = 'meta classify', meta_items.loc[test_idx]['MetaSubalgorithmPrediction' + meta_alg_name].mean()
+            logging.info('{acc_name:<16s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) :: | {:^25s} | Test-{acc_name}: {:>7.2f}'.format('meta class', *best_meta, i=i, n_splits=n_splits, acc_name=acc_name))
 
 if output_filepath is not None and output_filepath is not False:
     meta_items.to_csv(output_filepath)

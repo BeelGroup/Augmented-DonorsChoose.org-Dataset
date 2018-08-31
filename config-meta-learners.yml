@@ -28,3 +28,10 @@ meta_algorithms_args:
     SKLearn-RandomForestClassifier: {}
     SKLearn-DecisionTreeClassifier: {}
     SKLearn-ExtraTreeClassifier: {}
+    Keras-NN:
+        epochs: 50
+        batch_size: 256
+        optimizer: adadelta
+        loss: categorical_crossentropy
+        metrics: ['accuracy']
+        verbose: 1

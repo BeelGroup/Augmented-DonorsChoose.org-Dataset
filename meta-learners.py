@@ -5,10 +5,49 @@ import logging
 
 import numpy as np
 import pandas as pd
+from sklearn import tree, ensemble
 import yaml
+from keras import optimizers
+from keras.layers import Dense, Dropout
+from keras.models import Sequential
+from keras.utils import to_categorical
 from sklearn.model_selection import ShuffleSplit
-import sklearn.tree as tree
-import sklearn.ensemble as ensemble
+
+
+class NNHelper(object):
+    def __init__(self, **options):
+        self.options = {'epochs': 50, 'batch_size': 256, 'optimizer': 'adadelta', 'loss': 'categorical_crossentropy', 'metrics': ['accuracy'], 'verbose': 1}
+        self.options.update(options)
+
+        self.model = None
+        self.categories = None
+
+    def fit(self, X, y):
+        # Convert categories to hot values
+        self.categories = None
+        if y.dtype.name == 'category':
+            self.categories = y.cat.categories
+            y = y.cat.codes
+
+        y_hot = to_categorical(y)
+
+        self.model = Sequential()
+        self.model.add(Dense(units=X.shape[1] * 4, activation='relu', input_dim=X.shape[1]))
+        self.model.add(Dense(units=y_hot.shape[1], activation='softmax'))
+        self.model.compile(optimizer=self.options['optimizer'], loss=self.options['loss'], metrics=self.options['metrics'])
+
+        self.model.fit(X, y_hot, epochs=self.options['epochs'], batch_size=self.options['batch_size'], verbose=self.options['verbose'])
+
+    def predict(self, X):
+        y_hot = self.model.predict(X)
+
+        y = np.argmax(y_hot, axis=1)
+        # Convert back to category names if necessary
+        if self.categories is not None:
+            y = self.categories[y]
+
+        return  y
+
 
 with open('config-meta-learners.yml', 'r') as stream:
     config = yaml.load(stream)
@@ -96,11 +135,15 @@ date_columns = ['DonationReceivedDateYear','DonationReceivedDateMonth', 'Donatio
 meta_items = pd.merge(meta_items, donations[['DonorID', 'ProjectID', *date_columns]], on=['DonorID', 'ProjectID'], how='left', sort=False)
 feature_columns.update(date_columns)
 
+# Fill remaining NaN values (in DonorCity, DonorZip, SchoolCity and SchoolPercentageFreeLunch) with a value otherwise not used: -1
+# Most algorithms will not care about NaN either way but some are allergic to it
+meta_items[sorted(feature_columns)] = meta_items[sorted(feature_columns)].fillna(-1.)
+
 meta_algorithms = {}
 meta_algorithms_avail = {'SKLearn-AdaBoostClassifier': ensemble.AdaBoostClassifier, 'SKLearn-BaggingClassifier': ensemble.BaggingClassifier,
     'SKLearn-ExtraTreesClassifier': ensemble.ExtraTreesClassifier, 'SKLearn-GradientBoostingClassifier': ensemble.GradientBoostingClassifier,
     'SKLearn-RandomForestClassifier': ensemble.RandomForestClassifier, 'SKLearn-DecisionTreeClassifier': tree.DecisionTreeClassifier,
-    'SKLearn-ExtraTreeClassifier': tree.ExtraTreeClassifier}
+    'SKLearn-ExtraTreeClassifier': tree.ExtraTreeClassifier, 'Keras-NN': NNHelper}
 
 # Initialize all selected meta-algorithms
 for meta_alg_name in np.intersect1d(list(meta_algorithms_avail.keys()), list(meta_algorithms_args.keys())):

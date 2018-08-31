@@ -3,6 +3,7 @@ meta_items_filepath: data/items.csv
 donations_filepath: data/donorschoose.org/Donations.csv
 projects_filepath: data/donorschoose.org/Projects.csv
 donors_filepath: data/donorschoose.org/Donors.csv
+schools_filepath: data/donorschoose.org/Schools.csv
 output_filepath: data/meta-learner-items.csv
 random_state_seed: 2718281828
 algorithms_name:

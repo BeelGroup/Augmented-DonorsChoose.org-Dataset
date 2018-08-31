@@ -19,6 +19,7 @@ meta_items_filepath = config['meta_items_filepath']
 donations_filepath = config['donations_filepath']
 projects_filepath = config['projects_filepath']
 donors_filepath = config['donors_filepath']
+schools_filepath = config['schools_filepath']
 output_filepath = config['output_filepath']
 random_state_seed = config['random_state_seed']
 algorithms_name = config['algorithms_name']
@@ -36,11 +37,13 @@ meta_items = pd.read_csv(meta_items_filepath)
 donations = pd.read_csv(donations_filepath)
 projects = pd.read_csv(projects_filepath)
 donors = pd.read_csv(donors_filepath)
+schools = pd.read_csv(schools_filepath)
 # Get rid of pesky whitespaces in column names (pandas' query convenience function e.g. is allergic to them)
 meta_items.columns = meta_items.columns.str.replace(' ', '')
 donations.columns = donations.columns.str.replace(' ', '')
 projects.columns = projects.columns.str.replace(' ', '')
 donors.columns = donors.columns.str.replace(' ', '')
+schools.columns = schools.columns.str.replace(' ', '')
 
 # Unconditionally drop transactions which have no associated item (why do those kind or entries even exist?!)
 donations = donations[donations['ProjectID'].isin(projects['ProjectID'])]
@@ -51,25 +54,47 @@ donations['DonationReceivedDate'] = pd.to_datetime(donations['DonationReceivedDa
 # Keep track of all columns which shall be used for training
 feature_columns = set()
 
+# Allow merges via the 'SchoolID' column by adding the required information to the meta-features table
+meta_items = pd.merge(meta_items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='left', sort=False)
 # Preprocessing: Add additional information about the item, user and transaction to the meta-features table
-projects_cat_columns = ['ProjectSubjectCategoryTree', 'ProjectSubjectSubcategoryTree', 'ProjectResourceCategory', 'ProjectGradeLevelCategory']
-donors_cat_columns = ['DonorState', 'DonorCity', 'DonorZip', 'DonorIsTeacher']
-for df_cat, cat_columns, merge_on_column in [
-    (projects, projects_cat_columns, 'ProjectID'),
-    (donors, donors_cat_columns, 'DonorID')
-]:
-    for c in cat_columns:
-        df_cat[c] = df_cat[c].astype('category').cat.codes
+projects_columns = ['ProjectSubjectCategoryTree', 'ProjectSubjectSubcategoryTree', 'ProjectResourceCategory', 'ProjectGradeLevelCategory']
+donors_columns = ['DonorState', 'DonorCity', 'DonorZip', 'DonorIsTeacher']
+schools_columns = ['SchoolMetroType', 'SchoolPercentageFreeLunch', 'SchoolState', 'SchoolCity', 'SchoolZip']
+for df_cat, columns, merge_on_column in [(projects, projects_columns, 'ProjectID'), (donors, donors_columns, 'DonorID'), (schools, schools_columns, 'SchoolID')]:
+    meta_items = pd.merge(meta_items, df_cat[np.append(columns, merge_on_column)], on=merge_on_column, how='left', sort=False)
 
-    meta_items = pd.merge(meta_items, df_cat[np.append(cat_columns, merge_on_column)], on=merge_on_column, how='left', sort=False)
+# Convert categorical text columns to integer values
+cat_columns = ['ProjectSubjectCategoryTree', 'ProjectSubjectSubcategoryTree', 'ProjectResourceCategory', 'ProjectGradeLevelCategory', 'SchoolMetroType']
+for c in cat_columns:
+    meta_items[c] = meta_items[c].astype('category').cat.codes
 
-feature_columns.update(projects_cat_columns, donors_cat_columns)
+# Translate shared column values to common integers
+shared_columns = [['SchoolState', 'DonorState'], ['SchoolCity', 'DonorCity']]
+for column_tuple in shared_columns:
+    cat = set()
+    for c in column_tuple:
+        cat.update(meta_items[c].astype('category').cat.categories)
 
-# Preprocessing: Merge in the day of week in addition to the hour and minute as further meta-feature
+    # Sort set in order to get predictable results and to make the distance somewhat meaningful
+    shared_map = dict(zip(sorted(cat), np.arange(len(cat))))
+    meta_items[column_tuple] = meta_items[column_tuple].replace(shared_map)
+
+# Cut the zip code of the school to be of the same shape as for the user
+meta_items['SchoolZip'] = meta_items['SchoolZip'].astype(str).str[0:3].astype(int)
+# Convert teacher status to 1 / 0
+meta_items['DonorIsTeacher'] = meta_items['DonorIsTeacher'].map({'Yes': 1, 'No': 0})
+
+feature_columns.update(projects_columns, donors_columns, schools_columns)
+
+# Preprocessing: Merge in the information about the date as further meta-features
+donations['DonationReceivedDateYear'] = donations['DonationReceivedDate'].dt.year
+donations['DonationReceivedDateMonth'] = donations['DonationReceivedDate'].dt.month
+donations['DonationReceivedDateDay'] = donations['DonationReceivedDate'].dt.day
 donations['DonationReceivedDateDayOfWeek'] = donations['DonationReceivedDate'].dt.dayofweek
 donations['DonationReceivedDateTimeOfDay'] = donations['DonationReceivedDate'].dt.hour * 60 + donations['DonationReceivedDate'].dt.minute
-meta_items = pd.merge(meta_items, donations[['DonorID', 'ProjectID', 'DonationReceivedDateDayOfWeek', 'DonationReceivedDateTimeOfDay']], on=['DonorID', 'ProjectID'], how='left', sort=False)
-feature_columns.update(['DonationReceivedDateDayOfWeek', 'DonationReceivedDateTimeOfDay'])
+date_columns = ['DonationReceivedDateYear','DonationReceivedDateMonth', 'DonationReceivedDateDay', 'DonationReceivedDateDayOfWeek', 'DonationReceivedDateTimeOfDay']
+meta_items = pd.merge(meta_items, donations[['DonorID', 'ProjectID', *date_columns]], on=['DonorID', 'ProjectID'], how='left', sort=False)
+feature_columns.update(date_columns)
 
 meta_algorithms = {}
 meta_algorithms_avail = {'SKLearn-AdaBoostClassifier': ensemble.AdaBoostClassifier, 'SKLearn-BaggingClassifier': ensemble.BaggingClassifier,

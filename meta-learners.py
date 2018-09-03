@@ -61,6 +61,7 @@ donors_filepath = config['donors_filepath']
 schools_filepath = config['schools_filepath']
 output_filepath = config['output_filepath']
 random_state_seed = config['random_state_seed']
+stacking = config['stacking']
 algorithms_name = config['algorithms_name']
 algorithms_accuracy_name = config['algorithms_accuracy_name']
 algorithm_selection_methods = config['algorithm_selection_methods']
@@ -138,6 +139,10 @@ feature_columns.update(date_columns)
 # Fill remaining NaN values (in DonorCity, DonorZip, SchoolCity and SchoolPercentageFreeLunch) with a value otherwise not used: -1
 # Most algorithms will not care about NaN either way but some are allergic to it
 meta_items[sorted(feature_columns)] = meta_items[sorted(feature_columns)].fillna(-1.)
+
+# Add the predictions of algorithms from the learning subsystem to the feature-columns if a stacking meta-learner is explicitly enabled
+if stacking is True:
+    feature_columns.update(['Prediction' + alg_name for alg_name in algorithms_name])
 
 meta_algorithms = {}
 meta_algorithms_avail = {'SKLearn-AdaBoostClassifier': ensemble.AdaBoostClassifier, 'SKLearn-BaggingClassifier': ensemble.BaggingClassifier,

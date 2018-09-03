@@ -682,6 +682,8 @@ class ContentFilers(object):
                             pos = np.where(sorted_item_ids == test_user_feature[0])[0][0]
 
                             self.items.at[(self.items[self.u] == user) & (self.items[self.i] == test_user_feature[0]), 'RecallAtPosition' + alg_name] = pos
+                            # Return the cosine-similarity of the item and the user's profile
+                            self.items.at[(self.items[self.u] == user) & (self.items[self.i] == test_user_feature[0]), 'Prediction' + alg_name] = cosine_similarities[sorted_similarities_indices[pos]]
 
         # Overall accuracy
         for alg_name in sorted(self.algorithms_name):

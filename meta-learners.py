@@ -22,7 +22,7 @@ class NNHelper(object):
         self.model = None
         self.categories = None
 
-    def fit(self, X, y):
+    def fit(self, X, y, **kwargs):
         # Convert categories to hot values
         self.categories = None
         if y.dtype.name == 'category':
@@ -36,10 +36,10 @@ class NNHelper(object):
         self.model.add(Dense(units=y_hot.shape[1], activation='softmax'))
         self.model.compile(optimizer=self.options['optimizer'], loss=self.options['loss'], metrics=self.options['metrics'])
 
-        self.model.fit(X, y_hot, epochs=self.options['epochs'], batch_size=self.options['batch_size'], verbose=self.options['verbose'])
+        self.model.fit(X, y_hot, epochs=self.options['epochs'], batch_size=self.options['batch_size'], verbose=self.options['verbose'], **kwargs)
 
-    def predict(self, X):
-        y_hot = self.model.predict(X)
+    def predict(self, X, **kwargs):
+        y_hot = self.model.predict(X, **kwargs)
 
         y = np.argmax(y_hot, axis=1)
         # Convert back to category names if necessary

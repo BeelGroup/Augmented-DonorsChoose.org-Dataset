@@ -11,8 +11,8 @@ algorithms_name:
     - SKLearn-SVD
     - SKLearn-KNN
     - SKLearn-NMF
-    - SKLearn-TfidfVectorizer
-    - Gensim-FastText
+    - Tfidf
+    - FastText
 algorithms_accuracy_name: ['RecallAtPosition']
 # Process by which to select the algorithm from the learning subsystem; a subsect of {'classification', 'accuracy prediction'}
 algorithm_selection_methods:
@@ -21,17 +21,33 @@ algorithm_selection_methods:
 n_splits: 1
 train_size: 0.8
 meta_algorithms_args:
-    SKLearn-AdaBoostClassifier: {}
-    SKLearn-BaggingClassifier: {}
-    SKLearn-ExtraTreesClassifier: {}
-    SKLearn-GradientBoostingClassifier: {}
-    SKLearn-RandomForestClassifier: {}
-    SKLearn-DecisionTreeClassifier: {}
-    SKLearn-ExtraTreeClassifier: {}
-    Keras-NN:
-        epochs: 50
-        batch_size: 256
-        optimizer: adadelta
-        loss: categorical_crossentropy
-        metrics: ['accuracy']
-        verbose: 1
+    AdaBoost:
+        model: SKLearn-AdaBoostClassifier
+        options: {}
+    Bagging:
+        model: SKLearn-BaggingClassifier
+        options: {}
+    ExtraTrees:
+        model: SKLearn-ExtraTreesClassifier
+        options: {}
+    GradientBoosting:
+        model: SKLearn-GradientBoostingClassifier
+        options: {}
+    RandomForest:
+        model: SKLearn-RandomForestClassifier
+        options: {}
+    DecisionTree:
+        model: SKLearn-DecisionTreeClassifier
+        options: {}
+    ExtraTree:
+        model: SKLearn-ExtraTreeClassifier
+        options: {}
+    NeuralNetwork:
+        model: Keras-NN
+        options:
+            epochs: 50
+            batch_size: 256
+            optimizer: adadelta
+            loss: categorical_crossentropy
+            metrics: ['accuracy']
+            verbose: 1

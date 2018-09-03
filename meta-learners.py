@@ -146,8 +146,11 @@ meta_algorithms_avail = {'SKLearn-AdaBoostClassifier': ensemble.AdaBoostClassifi
     'SKLearn-ExtraTreeClassifier': tree.ExtraTreeClassifier, 'Keras-NN': NNHelper}
 
 # Initialize all selected meta-algorithms
-for meta_alg_name in np.intersect1d(list(meta_algorithms_avail.keys()), list(meta_algorithms_args.keys())):
-    meta_algorithms[meta_alg_name] = meta_algorithms_avail[meta_alg_name](**meta_algorithms_args[meta_alg_name])
+for meta_alg_name, meta_alg_spec in meta_algorithms_args.items():
+    if meta_alg_spec['model'] not in meta_algorithms_avail:
+        raise ValueError('Expected a valid meta-learner algorithm model from `' + str(sorted(meta_algorithms_avail.keys())) + '` got "' + meta_alg_spec['model'] + '"')
+
+    meta_algorithms[meta_alg_name] = meta_algorithms_avail[meta_alg_spec['model']](**meta_alg_spec['options'])
 
 i = 0
 rs = ShuffleSplit(n_splits=n_splits, train_size=train_size, test_size=None)

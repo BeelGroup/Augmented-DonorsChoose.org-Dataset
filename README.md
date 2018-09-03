@@ -111,7 +111,7 @@ plt.close()
 plt.figure()
 plt.grid(b=False, axis='x')
 
-algorithms_name = ['SKLearn-KNN', 'SKLearn-NMF', 'SKLearn-SVD', 'SciPy-SVD', 'SKLearn-TfidfVectorizer']
+algorithms_name = ['SKLearn-KNN', 'SKLearn-NMF', 'SKLearn-SVD', 'SciPy-SVD', 'Tfidf']
 algorithms_pretty_name = ['SKLearn-KNN', 'SKLearn-NMF', 'SKLearn-SVD', 'SciPy-SVD', 'SKLearn-TF-IDF']
 average_recall = [items['RecallAtPosition' + alg_name].mean() for alg_name in algorithms_name]
 
@@ -134,7 +134,7 @@ plt.close()
 plt.figure()
 plt.grid(b=False, axis='x')
 
-algorithms_name = ['SKLearn-KNN', 'SKLearn-SVD', 'SKLearn-TfidfVectorizer']
+algorithms_name = ['SKLearn-KNN', 'SKLearn-SVD', 'Tfidf']
 algorithms_pretty_name = ['SKLearn-KNN', 'SKLearn-SVD', 'SKLearn-TF-IDF']
 
 plt.hist([items['RecallAtPosition' + alg_name] for alg_name in algorithms_name], bins=10, density=True, label=algorithms_pretty_name, histtype='step')

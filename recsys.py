@@ -101,7 +101,7 @@ class CollaborativeFilters(object):
 
         self.algorithms_avail = {'SciPy-SVD': self.SciPySVD, 'SKLearn-SVD': self.SKLearnSVD, 'SKLearn-KNN': self.SKLearnKNN, 'SKLearn-NMF': self.SKLearnNMF}
 
-        self.algorithms_args = dict.fromkeys(self.algorithms_avail.keys(), {}) if algorithms_args is None else algorithms_args
+        self.algorithms_args = {alg_name: {'model': alg_name, 'options': {}} for alg_name in self.algorithms_avail.keys()} if algorithms_args is None else algorithms_args
         self.accuracy_methods = {'RMSE', 'MAE', 'RecallAtPosition'} if accuracy_methods is None else accuracy_methods
         # Keep track of the columns added to the dataframe
         self.algorithms_name = set()
@@ -147,8 +147,9 @@ class CollaborativeFilters(object):
             n_folds: Number of folds to perform in cross-validation.
         """
         sci_algorithms = {}
-        for alg_name in np.intersect1d(list(self.algorithms_avail.keys()), list(self.algorithms_args.keys())):
-            sci_algorithms[alg_name] = self.algorithms_avail[alg_name](**self.algorithms_args[alg_name])
+        for alg_name, alg_spec in self.algorithms_args.items():
+            if alg_spec['model'] in self.algorithms_avail:
+                sci_algorithms[alg_name] = self.algorithms_avail[alg_spec['model']](**alg_spec['options'])
 
         if not sci_algorithms:
             self._logger.warning('{} method invoked without having specified any tasks; Returning...'.format(self.__class__.__name__))
@@ -485,7 +486,7 @@ class CollaborativeFiltersSpl(object):
 
         self.algorithms_avail = {'SPL-SVD': spl.SVD, 'SPL-SVDpp': spl.SVDpp, 'SPL-NMF': spl.NMF, 'SPL-KNNWithMeans': spl.KNNWithMeans, 'SPL-KNNBasic': spl.KNNBasic, 'SPL-KNNWithZScore': spl.KNNWithZScore, 'SPL-KNNBaseline': spl.KNNBaseline, 'SPL-NormalPredictor': spl.NormalPredictor, 'SPL-CoClustering': spl.CoClustering, 'SPL-SlopeOne': spl.SlopeOne}
 
-        self.algorithms_args = dict.fromkeys(self.algorithms_avail.keys(), {}) if algorithms_args is None else algorithms_args
+        self.algorithms_args = {alg_name: {'model': alg_name, 'options': {}} for alg_name in self.algorithms_avail.keys()} if algorithms_args is None else algorithms_args
         self.accuracy_methods = {'RMSE', 'MAE'} if accuracy_methods is None else accuracy_methods
         # Keep track of the columns added to the dataframe
         self.algorithms_name = set()
@@ -507,8 +508,9 @@ class CollaborativeFiltersSpl(object):
             n_folds: Number of folds to perform in cross-validation.
         """
         spl_algorithms = {}
-        for alg_name in np.intersect1d(list(self.algorithms_avail.keys()), list(self.algorithms_args.keys())):
-            spl_algorithms[alg_name] = self.algorithms_avail[alg_name](**self.algorithms_args[alg_name])
+        for alg_name, alg_spec in self.algorithms_args.items():
+            if alg_spec['model'] in self.algorithms_avail:
+                spl_algorithms[alg_name] = self.algorithms_avail[alg_spec['model']](**alg_spec['options'])
 
         if not spl_algorithms:
             self._logger.warning('{} method invoked without having specified any tasks; Returning...'.format(self.__class__.__name__))
@@ -606,7 +608,7 @@ class ContentFilers(object):
 
         self.algorithms_avail = {'SKLearn-TfidfVectorizer': TfidfVectorizer, 'Gensim-FastText': self.GensimFastText}
 
-        self.algorithms_args = dict.fromkeys(self.algorithms_avail.keys(), {}) if algorithms_args is None else algorithms_args
+        self.algorithms_args = {alg_name: {'model': alg_name, 'options': {}} for alg_name in self.algorithms_avail.keys()} if algorithms_args is None else algorithms_args
         # Keep track of the columns added to the dataframe
         self.algorithms_name = set()
 
@@ -635,8 +637,9 @@ class ContentFilers(object):
             n_random_non_interacted_items: Number of random non-interacted items which shall be used for calculating the accuracy metrics.
         """
         content_algorithms = {}
-        for alg_name in np.intersect1d(list(self.algorithms_avail.keys()), list(self.algorithms_args.keys())):
-            content_algorithms[alg_name] = self.algorithms_avail[alg_name](**self.algorithms_args[alg_name])
+        for alg_name, alg_spec in self.algorithms_args.items():
+            if alg_spec['model'] in self.algorithms_avail:
+                content_algorithms[alg_name] = self.algorithms_avail[alg_spec['model']](**alg_spec['options'])
 
         if not content_algorithms:
             self._logger.warning('{} method invoked without having specified any tasks; Returning...'.format(self.__class__.__name__))

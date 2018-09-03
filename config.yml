@@ -16,36 +16,60 @@ sampling_methods:
 n_folds: 5
 algorithms_args:
     SciPy-SVD:
-        n_components: 100
+        model: SciPy-SVD
+        options: { n_components: 100}
     SKLearn-SVD:
-        n_components: 100
+        model: SKLearn-SVD
+        options: { n_components: 100 }
     SKLearn-KNN:
-        n_neighbors: 40
+        model: SKLearn-KNN
+        options: { n_neighbors: 40 }
     SKLearn-NMF:
-        n_components: 50
-    SPL-SVD: {}
-    SPL-SVDpp: {}
-    SPL-NMF: {}
-    SPL-KNNWithMeans:
-        verbose: False
-    SPL-KNNBasic:
-        verbose: False
-    SPL-KNNWithZScore:
-        verbose: False
-    SPL-KNNBaseline:
-        verbose: False
-    SPL-NormalPredictor: {}
-    SPL-CoClustering: {}
-    SPL-SlopeOne: {}
-    SKLearn-TfidfVectorizer:
-        analyzer: 'word'
-        ngram_range: [1, 2]
-        stop_words: 'english'
-        lowercase: True
-        max_df: 0.9
-        max_features: 5000
-    Gensim-FastText:
-        fasttext_model_file: './data/wiki.en.bin'
+        model: SKLearn-NMF
+        options: { n_components: 50 }
+    SPL-SVD:
+        model: SPL-SVD
+        options: {}
+    SVDpp:
+        model: SPL-SVDpp
+        options: {}
+    SPL-NMF:
+        model: SPL-NMF
+        options: {}
+    KNNWithMeans:
+        model: SPL-KNNWithMeans
+        options: { verbose: False }
+    KNNBasic:
+        model: SPL-KNNBasic
+        options: { verbose: False }
+    KNNWithZScore:
+        model: SPL-KNNWithZScore
+        options: { verbose: False }
+    KNNBaseline:
+        model: SPL-KNNBaseline
+        options: { verbose: False }
+    NormalPredictor:
+        model: SPL-NormalPredictor
+        options: {}
+    CoClustering:
+        model: SPL-CoClustering
+        options: {}
+    SlopeOne:
+        model: SPL-SlopeOne
+        options: {}
+    Tfidf:
+        model: SKLearn-TfidfVectorizer
+        options:
+            analyzer: 'word'
+            ngram_range: [1, 2]
+            stop_words: 'english'
+            lowercase: True
+            max_df: 0.9
+            max_features: 5000
+    FastText:
+        model: Gensim-FastText
+        options:
+            fasttext_model_file: './data/wiki.en.bin'
 accuracy_methods:
     - 'RMSE'
     - 'MAE'

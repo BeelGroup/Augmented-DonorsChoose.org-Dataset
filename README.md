@@ -148,3 +148,48 @@ plt.tight_layout()
 plt.savefig('Collaborative and Content-based Filters - Distribution of position in Top-N test set for various algorithms.pdf')
 plt.close()
 ```
+
+* Learning subsystem Recall@N performance
+
+```python
+plt.figure()
+plt.grid(b=False, axis='x')
+
+algorithms_name = ['SKLearn-KNN', 'SKLearn-SVD', 'Tfidf', 'FastText']
+recall_pos = [items['RecallAtPosition' + alg_name].values for alg_name in algorithms_name] + [items[['RecallAtPosition' + alg_name for alg_name in algorithms_name]].min(axis=1).values]
+algorithms_pretty_name = ['KNN', 'SVD', 'TF-IDF', 'FastText', 'Combined']
+
+plt.boxplot(recall_pos, positions=np.arange(len(algorithms_pretty_name)), meanline=True, showmeans=True, showfliers=False)
+
+plt.xticks(np.arange(len(algorithms_pretty_name)), algorithms_pretty_name)
+plt.ylim(ymin=-1)
+
+plt.xlabel('Algorithm')
+plt.ylabel('Position in Top-N test set')
+
+plt.gcf().autofmt_xdate()
+plt.tight_layout()
+
+plt.savefig('Learning subsystem - Position in Top-N test set for various algorithms.pdf')
+plt.close()
+```
+
+```python
+plt.figure()
+plt.grid(b=False, axis='x')
+
+algorithms_name = ['SKLearn-KNN', 'SKLearn-SVD', 'Tfidf', 'FastText']
+algorithms_pretty_name = {'SKLearn-KNN': 'KNN', 'SKLearn-SVD': 'SVD', 'Tfidf': 'TF-IDF', 'FastText': 'FastText'}
+algorithms_value_counts = items[['RecallAtPosition' + alg_name for alg_name in algorithms_name]].idxmin(axis=1).value_counts().rename(dict(zip(['RecallAtPosition' + alg_name for alg_name in algorithms_name], ['SKLearn-KNN', 'SKLearn-SVD', 'Tfidf', 'FastText']))).to_dict()
+
+plt.hist([items['RecallAtPosition' + alg_name] for alg_name in algorithms_name], bins=10, density=True, label=['{:<s} ({:<2.2%} overall best)'.format(algorithms_pretty_name[alg_name], algorithms_value_counts[alg_name] / items.shape[0]) for alg_name in algorithms_name], histtype='step')
+
+plt.legend(loc=9)
+plt.xlabel('Position in Top-N test set')
+plt.ylabel('Frequency')
+
+plt.tight_layout()
+
+plt.savefig('Learning subsystem - Distribution of position in Top-N test set for various algorithms.pdf')
+plt.close()
+```

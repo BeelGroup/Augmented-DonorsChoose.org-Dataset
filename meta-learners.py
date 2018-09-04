@@ -136,6 +136,13 @@ date_columns = ['DonationReceivedDateYear','DonationReceivedDateMonth', 'Donatio
 meta_items = pd.merge(meta_items, donations[['DonorID', 'ProjectID', *date_columns]], on=['DonorID', 'ProjectID'], how='left', sort=False)
 feature_columns.update(date_columns)
 
+# Add *IsEqual columns to the meta-features
+is_equal_columns = [('ZipIsEqual', 'DonorZip', 'SchoolZip'), ('CityIsEqual', 'DonorCity', 'SchoolCity'), ('StateIsEqual', 'DonorState', 'SchoolState')]
+for new_column, c_1, c_2  in is_equal_columns:
+    meta_items[new_column] = (meta_items[c_1] == meta_items[c_2]).astype(int)
+
+feature_columns.update(list(zip(*is_equal_columns))[0])
+
 # Fill remaining NaN values (in DonorCity, DonorZip, SchoolCity and SchoolPercentageFreeLunch) with a value otherwise not used: -1
 # Most algorithms will not care about NaN either way but some are allergic to it
 meta_items[sorted(feature_columns)] = meta_items[sorted(feature_columns)].fillna(-1.)

@@ -61,6 +61,7 @@ donors_filepath = config['donors_filepath']
 schools_filepath = config['schools_filepath']
 output_filepath = config['output_filepath']
 random_state_seed = config['random_state_seed']
+class_penalty_base = config['class_penalty_base']
 stacking = config['stacking']
 algorithms_name = config['algorithms_name']
 algorithms_accuracy_name = config['algorithms_accuracy_name']
@@ -210,10 +211,13 @@ for train_idx, test_idx in rs.split(meta_items):
                 # Treat the best performing algorithm of a row as the row's class
                 meta_items['SubalgorithmCategory'] = meta_items[sorted(alg_acc_to_alg_columns.keys())].idxmin(axis=1).astype('category')
 
+                sample_weight_mat = np.sort(meta_items.loc[train_idx][sorted(alg_acc_to_alg_columns.keys())], axis=1)
+                sample_weight = np.power(class_penalty_base, (sample_weight_mat[:, 1] - sample_weight_mat[:, 0]) / (np.max(sample_weight_mat[:, -1], axis=0) - np.min(sample_weight_mat[:, 0], axis=0)))
                 # Pass the raw category name to the fit method as it is expected that it can cope with strings
-                meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx]['SubalgorithmCategory'])
+                meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx]['SubalgorithmCategory'], sample_weight=sample_weight)
                 meta_items.at[test_idx, 'SubalgorithmPrediction' + meta_alg_name + acc_name] = meta_alg.predict(meta_items.loc[test_idx][sorted(feature_columns)])
 
+                logging.debug('{meta_alg_name:<35s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) {acc_name:<16s} :: | Value-Counts: {:<50s}'.format('meta class', str(meta_items.loc[test_idx]['SubalgorithmPrediction' + meta_alg_name + acc_name].value_counts().to_dict()), i=i, n_splits=n_splits, acc_name=acc_name, meta_alg_name=meta_alg_name))
                 classification_accuracy = (meta_items.loc[test_idx]['SubalgorithmCategory'] == meta_items.loc[test_idx]['SubalgorithmPrediction' + meta_alg_name + acc_name]).mean()
                 logging.debug('{meta_alg_name:<35s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) {acc_name:<16s} :: | Test-Accuracy: {:>7.2%}'.format('meta class', classification_accuracy, i=i, n_splits=n_splits, acc_name=acc_name, meta_alg_name=meta_alg_name))
 

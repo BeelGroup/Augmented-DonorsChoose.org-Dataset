@@ -193,3 +193,34 @@ plt.tight_layout()
 plt.savefig('Learning subsystem - Distribution of position in Top-N test set for various algorithms.pdf')
 plt.close()
 ```
+
+* Meta-learner performance for classification and error prediction
+
+```python
+# All meta-algorithms are tested on the same test-subset, hence choosing any one of them is fine
+meta_subset = meta_items.dropna(subset=['MetaSubalgorithmPredictionDecisionTree'])
+
+plt.figure()
+plt.grid(b=False, axis='x')
+
+meta_algorithms_name = [('Bagging', 'Bagging'), ('DecisionTree', 'DecisionTree'), ('BalancedDecisionTree', 'BalancedDTree'), ('GradientBoosting', 'GradientBoosting'), ('NeuralNetwork', 'NeuralNetwork')]
+algorithm_selection_columns = [('MetaSubalgorithmPrediction', 'CL'), ('MetaPrediction', 'EP')]
+meta_algorithms_column = np.array([[pre[0] + meta_alg_name[0] for pre in algorithm_selection_columns] for meta_alg_name in meta_algorithms_name]).flatten()
+meta_algorithms_pretty_name = np.array([[pre[1] + ' ' + meta_alg_name[1] for pre in algorithm_selection_columns] for meta_alg_name in meta_algorithms_name]).flatten()
+average_recall = [meta_subset[c].mean() for c in meta_algorithms_column]
+
+plt.errorbar(np.arange(len(average_recall)), average_recall, color=np.array([[c for _ in range(len(algorithm_selection_columns))] for c in plt.rcParams['axes.prop_cycle'].by_key()['color'][:len(meta_algorithms_name)]]).flatten(), xerr=0.45, markersize=0., ls='none')
+plt.axhline(y=meta_subset.lookup(meta_subset.index, meta_subset['SubalgorithmCategory']).mean(), color='orange', linestyle='--')
+
+plt.xticks(np.arange(len(meta_algorithms_pretty_name)), meta_algorithms_pretty_name)
+plt.ylim(ymin=-1)
+
+plt.xlabel('Algorithm')
+plt.ylabel('Average position in Top-N test set')
+
+plt.gcf().autofmt_xdate()
+plt.tight_layout()
+
+plt.savefig('Meta-learner as Classifier and Error Predictor - Average position in Top-N test set for various meta-learner algorithms.pdf')
+plt.close()
+```

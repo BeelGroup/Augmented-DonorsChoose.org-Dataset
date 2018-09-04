@@ -30,7 +30,7 @@ import matplotlib.pyplot as plt
 
 ### Visualizations
 
-* Plot the donated amount via bins on a logarithmic scale
+* Plot the donated amount in bins on a logarithmic scale
 
 ```python
 items_orig = donations[['ProjectID', 'DonorID', 'DonationAmount']]
@@ -76,7 +76,7 @@ plt.savefig('DonationAmount - Distribution of ratings for logarithmic bins and e
 plt.close()
 ```
 
-* Visualizing the RMSE
+* RMSE for collaborative filtering techniques
 
 ```python
 plt.figure()
@@ -105,7 +105,7 @@ plt.savefig('Collaborative Filters - RMSE for DIY algorithms and some baselines.
 plt.close()
 ```
 
-* Visualizing the Recall@N
+* Recall@N for collaborative and content-based filters
 
 ```python
 plt.figure()
@@ -115,7 +115,7 @@ algorithms_name = ['SKLearn-KNN', 'SKLearn-NMF', 'SKLearn-SVD', 'SciPy-SVD', 'Tf
 algorithms_pretty_name = ['SKLearn-KNN', 'SKLearn-NMF', 'SKLearn-SVD', 'SciPy-SVD', 'SKLearn-TF-IDF']
 average_recall = [items['RecallAtPosition' + alg_name].mean() for alg_name in algorithms_name]
 
-plt.errorbar(np.arange(len(algorithms_name)), average_recall, xerr=0.45, markersize=0., ls='none')
+plt.errorbar(np.arange(len(average_recall)), average_recall, xerr=0.45, markersize=0., ls='none')
 
 plt.xticks(np.arange(len(algorithms_pretty_name)), algorithms_pretty_name)
 plt.ylim(ymin=-1)

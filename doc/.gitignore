@@ -26,6 +26,9 @@ __*_temp.tex
 *.synctex.gz
 *.toc
 
+# Exclude LaTeX files in the resources folder res/ as they are created in a reproducable way
+res/*.tex
+
 # Drop auto-generated BibLaTeX files from index
 *.bbl
 *.bcf

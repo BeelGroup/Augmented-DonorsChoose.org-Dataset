@@ -1,0 +1,198 @@
+\documentclass[aspectratio=169]{beamer}
+	\usepackage[utf8]{inputenc}		% Required for umlauts
+	\usepackage[english]{babel}		% Language
+	%\usepackage[sfdefault]{roboto}	% Enable sans serif font roboto
+	%\usepackage{libertine}			% Enable this on Windows to allow for microtype
+	\usepackage[T1]{fontenc}		% Required for output of umlauts in PDF
+
+	\usepackage{mathtools}		% Required for formulas
+
+	\usepackage{caption}		% Customize caption aesthetics
+	\usepackage{tcolorbox}		% Fancy colored boxes
+	\usepackage{xcolor}			% Highlighting
+	\usepackage{soul}
+
+	\usepackage{listings}		% Insert programming code
+	\usepackage{graphicx}		% Required to insert images
+	\usepackage{subcaption}		% Enable sub-figure
+	\usepackage[space]{grffile} % Insert images baring a filename which contains spaces
+	\usepackage{float}			% Allow to forcefully set the location of an object
+
+	\usepackage[tracking=true]{microtype} % Required to change character spacing
+
+	\usepackage[style=alphabetic,backend=biber,sorting=none,giveninits=true,isbn=false,url=false]{biblatex}
+	\usepackage{csquotes}		% Ensure proper quotation of texts with babel and polyglossia with biblatex
+	\usepackage{hyperref}		% Insert clickable references
+
+	\usepackage{datetime}		% Flexible date specification
+	\newcommand{\leadingzero}[1]{\ifnum#1<10 0\the#1\else\the#1\fi}
+	\newcommand{\todayddmmyyyy}{\leadingzero{\day}.\leadingzero{\month}.\the\year}
+	\newcommand{\mathcolorbox}[2]{\colorbox{#1}{$\displaystyle #2$}}
+
+	\usepackage{geometry}
+	\usepackage{scrextend}		% Allow arbitrary indentation
+
+	\usepackage{color}
+
+	\usepackage{appendixnumberbeamer}	% Fancy page numbering excluding the appendix
+
+	% Compile notes into a separate file readable by pdfpc using a custom package which overwrite the `note` macro
+	\usepackage{../pdfpcnotes}
+
+	\makeatletter
+	% Fix subfig in beamer style presentation
+	\let\@@magyar@captionfix\relax
+
+	% Insert [short title] for \section in ToC
+	\patchcmd{\beamer@section}{{#2}{\the\c@page}}{{#1}{\the\c@page}}{}{}
+	% Insert [short title] for \section in Navigation
+	\patchcmd{\beamer@section}{{\the\c@section}{\secname}}{{\the\c@section}{#1}}{}{}
+	% Insert [short title] for \subsection in ToC
+	\patchcmd{\beamer@subsection}{{#2}{\the\c@page}}{{#1}{\the\c@page}}{}{}
+	% Insert [short title] for \subsection in Navigation
+	\patchcmd{\beamer@subsection}{{\the\c@subsection}{#2}}{{\the\c@subsection}{#1}}{}{}
+	\makeatother
+
+	\addbibresource{../literature.bib}
+
+	\setbeamercolor{title}{fg=orange}
+	\setbeamertemplate{title}{
+		\color{orange}
+		\textbf{\inserttitle}
+	}
+	\setbeamercolor{tableofcontents}{fg=orange}
+	\setbeamercolor{section in toc}{fg=black}
+	\setbeamercolor{subsection in toc}{fg=black}
+	\setbeamertemplate{frametitle}{
+		%\vspace{0.5em}
+		\color{orange}
+		\begin{center}
+			\textbf{\insertframetitle} \\
+			{\small \insertframesubtitle}
+		\end{center}
+	}
+	\setbeamertemplate{footline}[text line]{
+		\parbox{\linewidth}{
+			\color{gray}
+			\vspace*{-1em}
+			NII 2018
+			\hfill
+			Gordian (\href{mailto:gordian.edenhofer@gmail.com}{gordian.edenhofer@gmail.com})
+			\hfill
+			\insertframenumber/\inserttotalframenumber%
+		}
+	}
+	\setbeamertemplate{navigation symbols}{}
+	\setbeamertemplate{itemize item}{\color{black}$\bullet$}
+	\setbeamertemplate{itemize subitem}{\color{black}$\circ$}
+	\setbeamercolor{block title}{fg=black}
+	\captionsetup{font=scriptsize,labelfont={bf,scriptsize}}
+
+	\lstset{basicstyle=\ttfamily,breaklines=true,showstringspaces=false,commentstyle=\color{red},keywordstyle=\color{blue}}
+
+	\title{Meta-Learning~for~Recommender~Systems}
+	\subtitle{``learning to learn''}
+	\author[Edenhofer]{\href{mailto:gordian.edenhofer@gmail.com}{Gordian Edenhofer}}
+	\institute[NII]{
+		Working Group of Prof.~Dr.~Beel, Trinity College Dublin \\
+		Department of Prof.~Dr.~Akiko~Aizawa, Nationa Institute of Informatics
+	}
+	\date[Research Internship 2018]{National Institute of Informatics, \formatdate{06}{09}{2018}}
+	\subject{Natural Language Processing and Machine Translation}
+
+
+\begin{document}
+
+\pagenumbering{arabic}
+
+\begin{frame}[plain,noframenumbering]
+	\titlepage%
+\end{frame}
+
+\section{Current Progress}
+\frame{\vfill\centering\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/hide]\vfill}
+
+\subsection{Git Log}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Implement content-based neural network approach employing fastText
+		\item Add further meta-variables
+		\begin{itemize}
+			\item \#Donations per user
+			\item User location information
+			\item \ldots
+		\end{itemize}
+		\item Deploy meta-learners
+		\begin{itemize}
+			\item Compare a selection of decision tree and ensemble approaches
+			\item Implement shallow neural network
+			\item Compare classification models to error predicting approaches
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\subsection{Visualization}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{figure}
+		\centering
+		\includegraphics[width=\textwidth,height=0.6\textheight,keepaspectratio]{{{../res/Learning subsystem - Distribution of position in Top-N test set for various algorithms}}}
+		\caption{Distribution of the positon of the project to which the user donated to in a set of $100$ projects the user has not donated to. Results are shown for a subset of the learning subsystem.}
+	\end{figure}
+\end{frame}
+
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{figure}
+		\centering
+		\includegraphics[width=\textwidth,height=0.6\textheight,keepaspectratio]{{{../res/Learning subsystem - Position in Top-N test set for various algorithms}}}
+		\caption{Statistical features of the distribution of the donated item position in the Recall@N test set. Hereby, the orange line is indicating the median, the green line the mean.}
+	\end{figure}
+\end{frame}
+
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{figure}
+		\centering
+		\includegraphics[width=\textwidth,height=0.6\textheight,keepaspectratio]{{{../res/Meta-learner as Classifier and Error Predictor - Average position in Top-N test set for various meta-learner algorithms}}}
+		\caption{Performance of various meta-learners in comparison to the overall best algorithm. Meta-learners are used as classifiers (CL) as well as for error predictions (EP).}
+	\end{figure}
+\end{frame}
+
+\section{Next Steps}
+\frame{\vfill\centering\tableofcontents[sectionstyle=show/shaded,subsectionstyle=show/hide]\vfill}
+
+\subsection{TO-DO}
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{itemize}
+		\item Trial-and-error
+		\begin{itemize}
+			\item Hyperparameter tuning
+			\item Exploring the usefulness of sample weights, class weights, \ldots
+		\end{itemize}
+		\item Add further meta-variables
+		\begin{itemize}
+			\item Statistical features of the dataset
+			\item Pre-calculated values of combinations of meta-features
+		\end{itemize}
+		\item Explore further collaborative filtering techniques
+		\begin{itemize}
+			\item Filtering based on common user features, e.g.~location
+			\item Possibly implement novel and previously unexplored algorithms (?)
+		\end{itemize}
+	\end{itemize}
+\end{frame}
+
+\end{document}

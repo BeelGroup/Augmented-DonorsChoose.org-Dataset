@@ -1,2 +1,9 @@
 # Disregard datasets located in this folder
 */
+
+# Ignore input vectors for word-embedding
+*.bin
+*.vec
+
+# Do not attempt to track tables used to store item information
+*.csv

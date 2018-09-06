@@ -257,18 +257,33 @@
 			\note{Corpus statistics: value counts for user and item}
 			\note{Corpus statistics: looking into adding much more meta-features}
 		\end{itemize}
-		\item Error predicting approach
+		\item Meta-learner approaches
 		\begin{itemize}
-			\item Separate meta-learner predicting the Recall@N for each algorithm in the subsystem
-			\item Accuracy is measured using the algorithm with lowest predicted Recall@N
-		\end{itemize}
-		\item Classification approach
-		\begin{itemize}
-			\item Transaction is assigned to the class of the algorithm with the lowest Recall@N
-			\item Meta-learner predicts class of the transaction
-			\item Accuracy is measured using the algorithm of the predicted class
+			\item Error prediction
+			\item Transaction classification
 		\end{itemize}
 	\end{itemize}
+\end{frame}
+
+\begin{frame}
+	\frametitle{\insertsection}
+	\framesubtitle{\insertsubsection}
+
+	\begin{figure}
+		\centering
+		\subcaptionbox{Error prediction}{
+			\includegraphics[width=0.45\textwidth,height=\textheight,keepaspectratio]{{{../res/Meta-Learner Architecture: Error prediction algorithm}}}
+			}
+		\subcaptionbox{Classification}{
+			\includegraphics[width=0.45\textwidth,height=\textheight,keepaspectratio]{{{../res/Meta-Learner Architecture: Classification algorithm}}}
+		}
+		\caption{Meta-learner architecture for an error predicting and a classification approach.}
+	\end{figure}
+	\note{Error predicting approach: Separate meta-learner predicting the Recall@N for each algorithm in the subsystem}
+	\note{Error predicting approach: Accuracy is measured using the algorithm with lowest predicted Recall@N}
+	\note{Classification approach: Transaction is assigned to the class of the algorithm with the lowest Recall@N}
+	\note{Classification approach: Meta-learner predicts class of the transaction}
+	\note{Classification approach: Accuracy is measured using the algorithm of the predicted class}
 \end{frame}
 
 \section[Results]{Meta-Learning Experiment}

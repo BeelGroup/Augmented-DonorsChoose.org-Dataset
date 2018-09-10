@@ -115,7 +115,7 @@ for column_tuple in shared_columns:
     meta_items[column_tuple] = meta_items[column_tuple].replace(shared_map)
 
 # Cut the zip code of the school to be of the same shape as for the user
-meta_items['SchoolZip'] = meta_items['SchoolZip'].astype(str).str[0:3].astype(int)
+meta_items['SchoolZip'] = pd.to_numeric(meta_items['SchoolZip'].fillna(-1.).astype(str).str[0:3], downcast='integer')
 # Convert teacher status to 1 / 0
 meta_items['DonorIsTeacher'] = meta_items['DonorIsTeacher'].map({'Yes': 1, 'No': 0})
 

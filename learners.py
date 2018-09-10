@@ -50,6 +50,13 @@ donations['DonationReceivedDate'] = pd.to_datetime(donations['DonationReceivedDa
 # Remove special delimiter keyword from item description
 projects['ProjectEssay'] = projects['ProjectEssay'].str.replace('<!--DONOTREMOVEESSAYDIVIDER-->', '', regex=False)
 
+# Add further information about the date as additional meta-features to the donations table which will end up in the items table
+donations['DonationReceivedDateYear'] = donations['DonationReceivedDate'].dt.year
+donations['DonationReceivedDateMonth'] = donations['DonationReceivedDate'].dt.month
+donations['DonationReceivedDateDay'] = donations['DonationReceivedDate'].dt.day
+donations['DonationReceivedDateDayOfWeek'] = donations['DonationReceivedDate'].dt.dayofweek
+donations['DonationReceivedDateTimeOfDay'] = donations['DonationReceivedDate'].dt.hour * 60 + donations['DonationReceivedDate'].dt.minute
+
 # Update the transaction strength to have the value of the sum of the transactions
 items = pd.merge(donations[donations.columns.difference(['DonationAmount'])], donations_donation_amount, on=['DonorID', 'ProjectID'], how='left', sort=False)
 

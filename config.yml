@@ -1,6 +1,7 @@
 log_level: 10
 donations_filepath: data/donorschoose.org/Donations.csv
 projects_filepath: data/donorschoose.org/Projects.csv
+donors_filepath: data/donorschoose.org/Donors.csv
 output_filepath: data/items.csv
 random_state_seed: 2718281828
 # Constant for the top-N accuracy metrics
@@ -8,6 +9,9 @@ n_random_non_interacted_items: 100
 # Apply cleaning methods and sample the data as to reduce the amount of required memory
 sampling_methods:
     drop_raw_values:
+        - 'DonorState != DonorState'  # Convoluted way to drop NaN values
+        - 'DonorCity != DonorCity'
+        - 'DonorZip != DonorZip'
         - '0. <= DonationAmount <= 2.'
     frequency_boundaries:
         # Conditions must not be met at the same time; though, the last one will always hold
@@ -70,6 +74,31 @@ algorithms_args:
         model: Gensim-FastText
         options:
             fasttext_model_file: './data/wiki.en.bin'
+groupby:
+    -   columns: ['DonorState', 'DonorCity', 'DonorZip']
+        algorithms_args:
+            GroupByDonorStateCityZip-SKLearn-SVD:
+                model: SKLearn-SVD
+                options: { n_components: 100 }
+            GroupByDonorStateCityZip-SKLearn-KNN:
+                model: SKLearn-KNN
+                options: { n_neighbors: 40 }
+    -   columns: 'DonorCity'
+        algorithms_args:
+            GroupByDonorCity-SKLearn-SVD:
+                model: SKLearn-SVD
+                options: { n_components: 100 }
+            GroupByDonorCity-SKLearn-KNN:
+                model: SKLearn-KNN
+                options: { n_neighbors: 40 }
+    -   columns: 'DonorState'
+        algorithms_args:
+            GroupByDonorState-SKLearn-SVD:
+                model: SKLearn-SVD
+                options: { n_components: 100 }
+            GroupByDonorState-SKLearn-KNN:
+                model: SKLearn-KNN
+                options: { n_neighbors: 40 }
 accuracy_methods:
     - 'RMSE'
     - 'MAE'

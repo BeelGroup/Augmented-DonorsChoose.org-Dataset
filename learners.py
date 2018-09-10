@@ -15,12 +15,14 @@ with open('config.yml', 'r') as stream:
 log_level = config['log_level']
 donations_filepath = config['donations_filepath']
 projects_filepath = config['projects_filepath']
+donors_filepath = config['donors_filepath']
 output_filepath = config['output_filepath']
 random_state_seed = config['random_state_seed']
 n_random_non_interacted_items = config['n_random_non_interacted_items']
 sampling_methods = config['sampling_methods']
 n_folds = config['n_folds']
 algorithms_args = config['algorithms_args']
+groupby = config['groupby']
 accuracy_methods = config['accuracy_methods']
 rating_scores = config['rating_scores']
 rating_range_quantile = config['rating_range_quantile']
@@ -31,16 +33,29 @@ np.random.seed(random_state_seed)
 
 donations = pd.read_csv(donations_filepath)
 projects = pd.read_csv(projects_filepath)
+donors = pd.read_csv(donors_filepath)
 # Get rid of pesky whitespaces in column names (pandas' query convenience function e.g. is allergic to them)
-donations.columns = donations.columns.str.replace(' ', '')
-projects.columns = projects.columns.str.replace(' ', '')
+for df in [donations, projects, donors]:
+    df.columns = df.columns.str.replace(' ', '')
 
-# Unconditionally drop donations which have no associated project (why do those kind or transations even exist?!)
+# Preserve a subset of the table which accumulates duplicate donations to merge them back into the cleansed table
+# Hence, do not try to predict projects which the donor has already donated to
+donations_donation_amount = donations.groupby(['DonorID', 'ProjectID'])['DonationAmount'].sum().reset_index()
+
+# Unconditionally drop transactions which have no associated item (why do those kind or entries even exist?!)
 donations = donations[donations['ProjectID'].isin(projects['ProjectID'])]
-# Sum up duplicate donations unconditionally; Hence do not try to predict projects which the donor has already donated to
-items = donations.groupby(['DonorID', 'ProjectID'])['DonationAmount'].sum().reset_index()
+# Drop duplicate transactions
+donations = donations.drop_duplicates(subset=['DonorID', 'ProjectID'], keep='first')
+donations['DonationReceivedDate'] = pd.to_datetime(donations['DonationReceivedDate'])
 # Remove special delimiter keyword from item description
 projects['ProjectEssay'] = projects['ProjectEssay'].str.replace('<!--DONOTREMOVEESSAYDIVIDER-->', '', regex=False)
+
+# Update the transaction strength to have the value of the sum of the transactions
+items = pd.merge(donations[donations.columns.difference(['DonationAmount'])], donations_donation_amount, on=['DonorID', 'ProjectID'], how='left', sort=False)
+
+# Add information about the user
+donors_columns = ['DonorState', 'DonorCity', 'DonorZip', 'DonorIsTeacher']
+items = pd.merge(items, donors[np.append('DonorID', donors_columns)], on='DonorID', how='left', sort=False)
 
 # Apply the cleaning and sampling operations in a fixed order independently of the order of the dict or the user's choice
 sampling_methods_priority = {'drop_raw_values': 200, 'frequency_boundaries': 500, 'sample': 900}
@@ -79,13 +94,24 @@ items['DonationAmount'] = pd.cut(items['DonationAmount'], bins=rating_bins, incl
 
 algorithms_name = set()
 
-collab_filters = recsys.CollaborativeFilters(items, ('DonorID', 'ProjectID', 'DonationAmount'), rating_scores=rating_scores, algorithms_args=algorithms_args, accuracy_methods=accuracy_methods, log_level=log_level)
-items = collab_filters.fit_all(n_folds=n_folds, n_random_non_interacted_items=n_random_non_interacted_items).items
-algorithms_name.update(collab_filters.algorithms_name)
+for group in [{'columns': 'DonorID', 'algorithms_args': algorithms_args}] + groupby:
+    if type(group['columns']) is str:
+        item_columns = (group['columns'], 'ProjectID', 'DonationAmount')
+    elif type(group['columns']) is list:
+        item_columns = ('Concat' + ''.join(group['columns']), 'ProjectID', 'DonationAmount')
+        items[item_columns[0]] = ''
+        for c in group['columns']:
+            items[item_columns[0]] += items[c].astype(str)
+    else:
+        raise ValueError('Got an unexpected type of `columns` to groupby, expected either `str` or `list`, got "' + str(type(group['columns'])) + '"')
 
-content_filters = recsys.ContentFilers(items, ('DonorID', 'ProjectID', 'DonationAmount'), projects, ('ProjectTitle', 'ProjectShortDescription', 'ProjectNeedStatement', 'ProjectEssay'), algorithms_args=algorithms_args, accuracy_methods=accuracy_methods, log_level=log_level)
-items = content_filters.fit_all(n_random_non_interacted_items=n_random_non_interacted_items).items
-algorithms_name.update(content_filters.algorithms_name)
+    collab_filters = recsys.CollaborativeFilters(items, item_columns, rating_scores=rating_scores, algorithms_args=group['algorithms_args'], accuracy_methods=accuracy_methods, log_level=log_level)
+    items = collab_filters.fit_all(n_folds=n_folds, n_random_non_interacted_items=n_random_non_interacted_items).items
+    algorithms_name.update(collab_filters.algorithms_name)
+
+    content_filters = recsys.ContentFilers(items, item_columns, projects, ('ProjectTitle', 'ProjectShortDescription', 'ProjectNeedStatement', 'ProjectEssay'), algorithms_args=group['algorithms_args'], accuracy_methods=accuracy_methods, log_level=log_level)
+    items = content_filters.fit_all(n_random_non_interacted_items=n_random_non_interacted_items).items
+    algorithms_name.update(content_filters.algorithms_name)
 
 if output_filepath is not None and output_filepath is not False:
     items.to_csv(output_filepath)

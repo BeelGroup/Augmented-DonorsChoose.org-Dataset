@@ -80,20 +80,14 @@ projects = pd.read_csv(projects_filepath)
 donors = pd.read_csv(donors_filepath)
 schools = pd.read_csv(schools_filepath)
 # Get rid of pesky whitespaces in column names (pandas' query convenience function e.g. is allergic to them)
-meta_items.columns = meta_items.columns.str.replace(' ', '')
-donations.columns = donations.columns.str.replace(' ', '')
-projects.columns = projects.columns.str.replace(' ', '')
-donors.columns = donors.columns.str.replace(' ', '')
-schools.columns = schools.columns.str.replace(' ', '')
+for df in [donations, projects, donors, schools]:
+    df.columns = df.columns.str.replace(' ', '')
 
 # Unconditionally drop transactions which have no associated item (why do those kind or entries even exist?!)
 donations = donations[donations['ProjectID'].isin(projects['ProjectID'])]
 # Drop duplicate transactions
 donations = donations.drop_duplicates(subset=['DonorID', 'ProjectID'], keep='first')
 donations['DonationReceivedDate'] = pd.to_datetime(donations['DonationReceivedDate'])
-
-# Keep track of all columns which shall be used for training
-feature_columns = set()
 
 # Allow merges via the 'SchoolID' column by adding the required information to the meta-features table
 meta_items = pd.merge(meta_items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='left', sort=False)
@@ -125,6 +119,8 @@ meta_items['SchoolZip'] = meta_items['SchoolZip'].astype(str).str[0:3].astype(in
 # Convert teacher status to 1 / 0
 meta_items['DonorIsTeacher'] = meta_items['DonorIsTeacher'].map({'Yes': 1, 'No': 0})
 
+# Keep track of all columns which shall be used for training
+feature_columns = set()
 feature_columns.update(projects_columns, donors_columns, schools_columns)
 
 # Preprocessing: Merge in the information about the date as further meta-features
@@ -133,7 +129,7 @@ donations['DonationReceivedDateMonth'] = donations['DonationReceivedDate'].dt.mo
 donations['DonationReceivedDateDay'] = donations['DonationReceivedDate'].dt.day
 donations['DonationReceivedDateDayOfWeek'] = donations['DonationReceivedDate'].dt.dayofweek
 donations['DonationReceivedDateTimeOfDay'] = donations['DonationReceivedDate'].dt.hour * 60 + donations['DonationReceivedDate'].dt.minute
-date_columns = ['DonationReceivedDateYear','DonationReceivedDateMonth', 'DonationReceivedDateDay', 'DonationReceivedDateDayOfWeek', 'DonationReceivedDateTimeOfDay']
+date_columns = ['DonationReceivedDateYear', 'DonationReceivedDateMonth', 'DonationReceivedDateDay', 'DonationReceivedDateDayOfWeek', 'DonationReceivedDateTimeOfDay']
 meta_items = pd.merge(meta_items, donations[['DonorID', 'ProjectID', *date_columns]], on=['DonorID', 'ProjectID'], how='left', sort=False)
 feature_columns.update(date_columns)
 

@@ -153,7 +153,10 @@ meta_algorithms = {}
 meta_algorithms_avail = {'SKLearn-AdaBoostClassifier': ensemble.AdaBoostClassifier, 'SKLearn-BaggingClassifier': ensemble.BaggingClassifier,
     'SKLearn-ExtraTreesClassifier': ensemble.ExtraTreesClassifier, 'SKLearn-GradientBoostingClassifier': ensemble.GradientBoostingClassifier,
     'SKLearn-RandomForestClassifier': ensemble.RandomForestClassifier, 'SKLearn-DecisionTreeClassifier': tree.DecisionTreeClassifier,
-    'SKLearn-ExtraTreeClassifier': tree.ExtraTreeClassifier, 'Keras-NN': NNHelper}
+    'SKLearn-ExtraTreeClassifier': tree.ExtraTreeClassifier, 'SKLearn-AdaBoostRegressor': ensemble.AdaBoostRegressor,
+    'SKLearn-BaggingRegressor': ensemble.BaggingRegressor, 'SKLearn-ExtraTreesRegressor': ensemble.ExtraTreesRegressor,
+    'SKLearn-GradientBoostingRegressor': ensemble.GradientBoostingRegressor, 'SKLearn-RandomForestRegressor': ensemble.RandomForestRegressor,
+    'SKLearn-DecisionTreeRegressor': tree.DecisionTreeRegressor, 'SKLearn-ExtraTreeRegressor': tree.ExtraTreeRegressor, 'Keras-NN': NNHelper}
 
 # Initialize all selected meta-algorithms
 for meta_alg_name, meta_alg_spec in meta_algorithms_args.items():

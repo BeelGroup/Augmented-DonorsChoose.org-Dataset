@@ -140,9 +140,9 @@ for new_column, c_1, c_2  in is_equal_columns:
 
 feature_columns.update(list(zip(*is_equal_columns))[0])
 
-# Fill remaining NaN values (in DonorCity, DonorZip, SchoolCity and SchoolPercentageFreeLunch) with a value otherwise not used: -1
-# Most algorithms will not care about NaN either way but some are allergic to it
-meta_items[sorted(feature_columns)] = meta_items[sorted(feature_columns)].fillna(-1.)
+# Fill remaining non-numeric and NaN values (e.g. in DonorCity, DonorZip, SchoolCity and SchoolPercentageFreeLunch) with a value otherwise not used: -1
+# Most algorithms will not care about NaN (though some are allergic to it) but are keen on converting the data to floats
+meta_items[sorted(feature_columns)] = meta_items[sorted(feature_columns)].apply(pd.to_numeric, errors='coerce').fillna(-1.)
 
 # Add the predictions of algorithms from the learning subsystem to the feature-columns if a stacking meta-learner is explicitly enabled
 if stacking is True:

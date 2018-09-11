@@ -227,13 +227,16 @@ for train_idx, test_idx in rs.split(meta_items):
 
             if 'classification' in algorithm_selection_methods:
                 # Treat the best performing algorithm of a row as the row's class
-                meta_items['SubalgorithmCategory'] = meta_items[sorted(alg_acc_to_alg_columns.keys())].idxmin(axis=1).astype('category')
+                meta_items['SubalgorithmCategory'] = meta_items[sorted(alg_acc_to_alg_columns.keys())].idxmin(axis=1)
+                # Assign category IDs in descending order with the average algorithm training performance as to make the distances interpretable
+                sub_alg_value_counts = meta_items.loc[train_idx]['SubalgorithmCategory'].value_counts()
+                sub_alg_sorted = sorted(alg_acc_to_alg_columns.keys(), key=lambda x: -1 * sub_alg_value_counts[x])
+                meta_items['SubalgorithmCategory'] = meta_items['SubalgorithmCategory'].astype(pd.api.types.CategoricalDtype(categories=sub_alg_sorted))
 
                 sample_weight_mat = np.sort(meta_items.loc[train_idx][sorted(alg_acc_to_alg_columns.keys())], axis=1)
                 sample_weight = np.power(class_penalty_base, (sample_weight_mat[:, 1] - sample_weight_mat[:, 0]) / (np.max(sample_weight_mat[:, -1], axis=0) - np.min(sample_weight_mat[:, 0], axis=0)))
-                # Pass the raw category name to the fit method as it is expected that it can cope with strings
-                meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx]['SubalgorithmCategory'], sample_weight=sample_weight)
-                meta_items['SubalgorithmPrediction' + meta_alg_name + acc_name] = meta_alg.predict(meta_items[sorted(feature_columns)])
+                meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx]['SubalgorithmCategory'].cat.codes, sample_weight=sample_weight)
+                meta_items['SubalgorithmPrediction' + meta_alg_name + acc_name] = pd.Categorical.from_codes(meta_alg.predict(meta_items[sorted(feature_columns)]), categories=sub_alg_sorted)
 
                 logging.debug('{meta_alg_name:<35s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) {acc_name:<16s} :: | Value-Counts: {:<50s}'.format('meta class', str(meta_items.loc[test_idx]['SubalgorithmPrediction' + meta_alg_name + acc_name].value_counts().to_dict()), i=i, n_splits=n_splits, acc_name=acc_name, meta_alg_name=meta_alg_name))
                 classification_accuracy = (meta_items.loc[test_idx]['SubalgorithmCategory'] == meta_items.loc[test_idx]['SubalgorithmPrediction' + meta_alg_name + acc_name]).mean()

@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 
-import itertools
 import logging
 
 import numpy as np
@@ -170,9 +169,26 @@ for train_idx, test_idx in rs.split(meta_items):
 
     # Preprocessing: Add further information to the meta-features table which is test-train specific
     val_count_columns = ['DonorID', 'ProjectID']
-    for idx, c in itertools.product([train_idx, test_idx], val_count_columns):
-        value_counts = meta_items.loc[idx][c].value_counts(sort=False).reset_index().rename(columns={'index': c, c: 'ValueCounts' + c})
-        meta_items.at[idx, 'ValueCounts' + c] = pd.merge(meta_items[[c]], value_counts, on=c, how='left', sort=False).loc[idx]['ValueCounts' + c]
+    for c in val_count_columns:
+        # Add the value counts of the train data directly to the table
+        value_counts = meta_items.loc[train_idx][c].value_counts(sort=False).reset_index().rename(columns={'index': c, c: 'ValueCounts' + c})
+        meta_items.at[train_idx, 'ValueCounts' + c] = pd.merge(meta_items[[c]], value_counts, on=c, how='left', sort=False).loc[train_idx]['ValueCounts' + c]
+        # Add the training value counts plus unity to every transaction in the test data as not to reveal how often an item or a user occurs in the test set
+        # This leaks information from the training data into the test data, but not the other way around!
+        test_value_counts = pd.DataFrame({c: meta_items.loc[test_idx][c].unique(), 'ValueCounts' + c: 1.})
+        test_value_counts['ValueCounts' + c] = pd.merge(test_value_counts, value_counts, on=c, how='left', suffixes=('_x', '_y'), sort=False)[['ValueCounts' + c + '_x', 'ValueCounts' + c + '_y']].sum(axis=1)
+        meta_items.at[test_idx, 'ValueCounts' + c] = pd.merge(meta_items[[c]], test_value_counts, on=c, how='left', sort=False).loc[test_idx]['ValueCounts' + c]
+
+    feature_columns.update(['ValueCounts' + c for c in val_count_columns])
+
+    user_mean_columns = np.append(projects_columns, schools_columns)
+    for c in user_mean_columns:
+        aggregated_mean = meta_items.loc[train_idx].groupby('DonorID')[c].mean().reset_index().rename(columns={c: 'UserMean' + c})
+        meta_items = pd.merge(meta_items, aggregated_mean, on='DonorID', how='left', sort=False)
+        # Fill the remaining user-values which were not covered by the training set with the overall train mean
+        meta_items['UserMean' + c] = meta_items['UserMean' + c].fillna(meta_items.loc[train_idx][c].mean())
+
+    feature_columns.update(['UserMean' + c for c in user_mean_columns])
 
     for acc_name in algorithms_accuracy_name:
         # Convert between column names

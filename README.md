@@ -197,8 +197,7 @@ plt.close()
 * Meta-learner performance for classification and error prediction
 
 ```python
-# All meta-algorithms are tested on the same test-subset, hence choosing any one of them is fine
-meta_subset = meta_items.dropna(subset=['MetaSubalgorithmPredictionDecisionTree'])
+meta_subset = meta_items.loc[test_idx]
 
 plt.figure()
 plt.grid(b=False, axis='x')

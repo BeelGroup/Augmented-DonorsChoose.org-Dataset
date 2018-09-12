@@ -85,10 +85,26 @@ algorithms_args:
         model: Gensim-FastText
         options:
             fasttext_model_file: './data/wiki.en.bin'
+    GroupByDonorStateCityZipIsTeacher-SKLearn-SVD:
+        model: SKLearn-SVD
+        options: { n_components: 100 }
+        groupby: ['DonorState', 'DonorCity', 'DonorZip', 'DonorIsTeacher']
     GroupByDonorStateCityZip-SKLearn-SVD:
         model: SKLearn-SVD
         options: { n_components: 100 }
         groupby: ['DonorState', 'DonorCity', 'DonorZip']
+    GroupByDonorStateCityIsTeacherState-SKLearn-SVD:
+        model: SKLearn-SVD
+        options: { n_components: 100 }
+        groupby: ['DonorState', 'DonorCity', 'DonorIsTeacher']
+    GroupByDonorStateZipIsTeacher-SKLearn-SVD:
+        model: SKLearn-SVD
+        options: { n_components: 100 }
+        groupby: ['DonorState', 'DonorZip', 'DonorIsTeacher']
+    GroupByDonorStateIsTeacher-SKLearn-SVD:
+        model: SKLearn-SVD
+        options: { n_components: 100 }
+        groupby: ['DonorState', 'DonorIsTeacher']
     GroupByDonorState-SKLearn-SVD:
         model: SKLearn-SVD
         options: { n_components: 100 }

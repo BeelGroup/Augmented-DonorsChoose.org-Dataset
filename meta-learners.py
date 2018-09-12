@@ -49,9 +49,10 @@ class NNHelper(object):
         return  y
 
 
-class UserClusterKMeans(object):
+class UserCluster(object):
     def __init__(self, **options):
-        self.model = cluster.KMeans(**options)
+        class_options = {k: v for k, v in options.items() if k != 'getattr_class_name'}
+        self.model = getattr(cluster, options['getattr_class_name'])(**class_options)
         self.labels_to_target = None
 
     def fit(self, X, y=None, **kwargs):
@@ -174,7 +175,7 @@ meta_algorithms_avail = {'SKLearn-AdaBoostClassifier': ensemble.AdaBoostClassifi
     'SKLearn-BaggingRegressor': ensemble.BaggingRegressor, 'SKLearn-ExtraTreesRegressor': ensemble.ExtraTreesRegressor,
     'SKLearn-GradientBoostingRegressor': ensemble.GradientBoostingRegressor, 'SKLearn-RandomForestRegressor': ensemble.RandomForestRegressor,
     'SKLearn-DecisionTreeRegressor': tree.DecisionTreeRegressor, 'SKLearn-ExtraTreeRegressor': tree.ExtraTreeRegressor,
-    'Keras-NN': NNHelper, 'SKLearn-UserCluster-KMeans': UserClusterKMeans}
+    'Keras-NN': NNHelper, 'SKLearn-UserCluster': UserCluster}
 
 # Initialize all selected meta-algorithms
 for meta_alg_name, meta_alg_spec in meta_algorithms_args.items():

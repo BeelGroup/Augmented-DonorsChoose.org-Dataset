@@ -30,7 +30,8 @@ meta_algorithms_args:
     #   'SKLearn-ExtraTreeClassifier', 'SKLearn-AdaBoostRegressor',
     #   'SKLearn-BaggingRegressor', 'SKLearn-ExtraTreesRegressor'
     #   'SKLearn-GradientBoostingRegressor', 'SKLearn-RandomForestRegressor',
-    #   'SKLearn-DecisionTreeRegressor', 'SKLearn-ExtraTreeRegressor', 'Keras-NN'}
+    #   'SKLearn-DecisionTreeRegressor', 'SKLearn-ExtraTreeRegressor',
+    #   'Keras-NN', 'SKLearn-UserCluster'}
     # options: dictionary of `options`; must be specified as to initialize the algorithm
     # methods: algorithm selection `methods` are the processes by which to select
     #   the algorithm from the learning subsystem;
@@ -84,8 +85,8 @@ meta_algorithms_args:
         options: {}
         methods: ['accuracy prediction']
     UserClusterKMeans:
-        model: SKLearn-UserCluster-KMeans
-        options: {}
+        model: SKLearn-UserCluster
+        options: { getattr_class_name: KMeans }
         methods: ['classification']
     ExtraTreeCl:
         model: SKLearn-ExtraTreeClassifier

@@ -4,12 +4,13 @@ import logging
 
 import numpy as np
 import pandas as pd
-from sklearn import tree, ensemble
 import yaml
 from keras import optimizers
 from keras.layers import Dense, Dropout
 from keras.models import Sequential
 from keras.utils import to_categorical
+from scipy import stats
+from sklearn import cluster, ensemble, tree
 from sklearn.model_selection import ShuffleSplit
 
 
@@ -46,6 +47,28 @@ class NNHelper(object):
             y = self.categories[y]
 
         return  y
+
+
+class UserClusterKMeans(object):
+    def __init__(self, **options):
+        self.model = cluster.KMeans(**options)
+        self.labels_to_target = None
+
+    def fit(self, X, y=None, **kwargs):
+        cluster_labels = self.model.fit_predict(X)
+
+        labels_to_targets_dict = {}
+        for label in np.unique(cluster_labels):
+            # Simple majority voting to select the first most frequent target for each cluster
+            label_pos = np.where(cluster_labels == label)[0]
+            labels_to_targets_dict[label] = stats.mode(y[label_pos])[0][0]
+
+        self.labels_to_targets = np.vectorize(labels_to_targets_dict.get)
+
+    def predict(self, X, **kwargs):
+        cluster_labels = self.model.predict(X)
+
+        return self.labels_to_targets(cluster_labels)
 
 
 with open('config-meta-learners.yml', 'r') as stream:
@@ -150,7 +173,8 @@ meta_algorithms_avail = {'SKLearn-AdaBoostClassifier': ensemble.AdaBoostClassifi
     'SKLearn-ExtraTreeClassifier': tree.ExtraTreeClassifier, 'SKLearn-AdaBoostRegressor': ensemble.AdaBoostRegressor,
     'SKLearn-BaggingRegressor': ensemble.BaggingRegressor, 'SKLearn-ExtraTreesRegressor': ensemble.ExtraTreesRegressor,
     'SKLearn-GradientBoostingRegressor': ensemble.GradientBoostingRegressor, 'SKLearn-RandomForestRegressor': ensemble.RandomForestRegressor,
-    'SKLearn-DecisionTreeRegressor': tree.DecisionTreeRegressor, 'SKLearn-ExtraTreeRegressor': tree.ExtraTreeRegressor, 'Keras-NN': NNHelper}
+    'SKLearn-DecisionTreeRegressor': tree.DecisionTreeRegressor, 'SKLearn-ExtraTreeRegressor': tree.ExtraTreeRegressor,
+    'Keras-NN': NNHelper, 'SKLearn-UserCluster-KMeans': UserClusterKMeans}
 
 # Initialize all selected meta-algorithms
 for meta_alg_name, meta_alg_spec in meta_algorithms_args.items():
@@ -209,8 +233,8 @@ for train_idx, test_idx in rs.split(meta_items):
 
             if 'accuracy prediction' in meta_algorithms_args[meta_alg_name]['methods']:
                 for alg_name in algorithms_name:
-                    meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx][acc_name + alg_name])
-                    meta_items['Prediction' + meta_alg_name + acc_name + alg_name] = meta_alg.predict(meta_items[sorted(feature_columns)])
+                    meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)].values, meta_items.loc[train_idx][acc_name + alg_name].values)
+                    meta_items['Prediction' + meta_alg_name + acc_name + alg_name] = meta_alg.predict(meta_items[sorted(feature_columns)].values)
 
                     log_line = '{meta_alg_name:<35s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) {acc_name:<16s}{alg_name:<25s} ::'.format('meta acc', i=i, n_splits=n_splits, acc_name=acc_name, alg_name=alg_name, meta_alg_name=meta_alg_name)
                     err = meta_items['Prediction' + meta_alg_name + acc_name + alg_name] - meta_items[acc_name + alg_name]
@@ -238,8 +262,8 @@ for train_idx, test_idx in rs.split(meta_items):
 
                 sample_weight_mat = np.sort(meta_items.loc[train_idx][sorted(alg_acc_to_alg_columns.keys())], axis=1)
                 sample_weight = np.power(class_penalty_base, (sample_weight_mat[:, 1] - sample_weight_mat[:, 0]) / (np.max(sample_weight_mat[:, -1], axis=0) - np.min(sample_weight_mat[:, 0], axis=0)))
-                meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx]['SubalgorithmCategory'].cat.codes, sample_weight=sample_weight)
-                meta_items['SubalgorithmPrediction' + meta_alg_name + acc_name] = pd.Categorical.from_codes(meta_alg.predict(meta_items[sorted(feature_columns)]), categories=sub_alg_sorted)
+                meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)].values, meta_items.loc[train_idx]['SubalgorithmCategory'].cat.codes.values, sample_weight=sample_weight)
+                meta_items['SubalgorithmPrediction' + meta_alg_name + acc_name] = pd.Categorical.from_codes(meta_alg.predict(meta_items[sorted(feature_columns)].values), categories=sub_alg_sorted)
 
                 logging.debug('{meta_alg_name:<35s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) {acc_name:<16s} :: | Value-Counts: {:<50s}'.format('meta class', str(meta_items.loc[test_idx]['SubalgorithmPrediction' + meta_alg_name + acc_name].value_counts().to_dict()), i=i, n_splits=n_splits, acc_name=acc_name, meta_alg_name=meta_alg_name))
                 classification_accuracy = (meta_items.loc[test_idx]['SubalgorithmCategory'] == meta_items.loc[test_idx]['SubalgorithmPrediction' + meta_alg_name + acc_name]).mean()

@@ -83,6 +83,10 @@ meta_algorithms_args:
         model: SKLearn-DecisionTreeRegressor
         options: {}
         methods: ['accuracy prediction']
+    UserClusterKMeans:
+        model: SKLearn-UserCluster-KMeans
+        options: {}
+        methods: ['classification']
     ExtraTreeCl:
         model: SKLearn-ExtraTreeClassifier
         options: {}

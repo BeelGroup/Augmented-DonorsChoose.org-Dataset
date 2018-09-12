@@ -8,7 +8,6 @@ output_filepath: data/meta-learner-items.csv
 random_state_seed: 2718281828
 # Base of the power for the sample_weight; a value of 1 disables any scaling
 class_penalty_base: 1
-stacking: False
 algorithms_name:
     - SciPy-SVD
     - SKLearn-SVD
@@ -17,37 +16,77 @@ algorithms_name:
     - Tfidf
     - FastText
 algorithms_accuracy_name: ['RecallAtPosition']
-# Process by which to select the algorithm from the learning subsystem; a subsect of {'classification', 'accuracy prediction'}
-algorithm_selection_methods:
-    - classification
-    - accuracy prediction
 n_splits: 1
 train_size: 0.8
 meta_algorithms_args:
-    AdaBoost:
+    # Parameterized meta-learners specifying the name of a `model`,
+    # the model's `options` as dictionary, the selection `methods` for
+    # the algorithms in the learning subsystem and whether `stacking` is desired.
+    #
+    # model: name of the `model`;
+    #   must be one of {'SKLearn-AdaBoostClassifier', 'SKLearn-BaggingClassifier',
+    #   'SKLearn-ExtraTreesClassifier', 'SKLearn-GradientBoostingClassifier',
+    #   'SKLearn-RandomForestClassifier', 'SKLearn-DecisionTreeClassifier',
+    #   'SKLearn-ExtraTreeClassifier', 'SKLearn-AdaBoostRegressor',
+    #   'SKLearn-BaggingRegressor', 'SKLearn-ExtraTreesRegressor'
+    #   'SKLearn-GradientBoostingRegressor', 'SKLearn-RandomForestRegressor',
+    #   'SKLearn-DecisionTreeRegressor', 'SKLearn-ExtraTreeRegressor', 'Keras-NN'}
+    # options: dictionary of `options`; must be specified as to initialize the algorithm
+    # methods: algorithm selection `methods` are the processes by which to select
+    #   the algorithm from the learning subsystem;
+    #   must be a subsect of {'classification', 'accuracy prediction'}
+    # stacking: toggle whether to performa a `stacking` step, meaning passing
+    #   the prediction of the learning subsystem to the meta-learner;
+    #   defaults to `False` if not set and can be omitted
+    AdaBoostCl:
         model: SKLearn-AdaBoostClassifier
         options: {}
-    Bagging:
+        methods: ['classification']
+    BaggingCl:
         model: SKLearn-BaggingClassifier
         options: {}
-    ExtraTrees:
+        methods: ['classification']
+    BaggingRg:
+        model: SKLearn-BaggingRegressor
+        options: {}
+        methods: ['classification', 'accuracy prediction']
+    ExtraTreesCl:
         model: SKLearn-ExtraTreesClassifier
         options: {}
-    GradientBoosting:
+        methods: ['classification']
+    GradientBoostingCl:
         model: SKLearn-GradientBoostingClassifier
         options: {}
-    RandomForest:
+        methods: ['classification']
+    GradientBoostingRg:
+        model: SKLearn-GradientBoostingRegressor
+        options: {}
+        methods: ['accuracy prediction']
+    RandomForestCl:
         model: SKLearn-RandomForestClassifier
         options: {}
-    DecisionTree:
+        methods: ['classification']
+    StackingDecisionTree:
         model: SKLearn-DecisionTreeClassifier
         options: {}
+        methods: ['classification']
+        stacking: True
     BalancedDecisionTree:
         model: SKLearn-DecisionTreeClassifier
         options: { class_weight: balanced }
-    ExtraTree:
+        methods: ['classification']
+    DecisionTreeCl:
+        model: SKLearn-DecisionTreeClassifier
+        options: {}
+        methods: ['classification']
+    DecisionTreeRg:
+        model: SKLearn-DecisionTreeRegressor
+        options: {}
+        methods: ['accuracy prediction']
+    ExtraTreeCl:
         model: SKLearn-ExtraTreeClassifier
         options: {}
+        methods: ['classification']
     NeuralNetwork:
         model: Keras-NN
         options:
@@ -57,3 +96,4 @@ meta_algorithms_args:
             loss: categorical_crossentropy
             metrics: ['accuracy']
             verbose: 1
+        methods: ['classification']

@@ -61,10 +61,8 @@ schools_filepath = config['schools_filepath']
 output_filepath = config['output_filepath']
 random_state_seed = config['random_state_seed']
 class_penalty_base = config['class_penalty_base']
-stacking = config['stacking']
 algorithms_name = config['algorithms_name']
 algorithms_accuracy_name = config['algorithms_accuracy_name']
-algorithm_selection_methods = config['algorithm_selection_methods']
 n_splits = config['n_splits']
 train_size = config['train_size']
 meta_algorithms_args = config['meta_algorithms_args']
@@ -120,8 +118,8 @@ meta_items['DonorIsTeacher'] = meta_items['DonorIsTeacher'].map({'Yes': 1, 'No':
 
 # Keep track of all columns which shall be used for training
 # However, make sure not to train on features from the item; If otherwise required, simply add projects_columns and schools_columns here
-feature_columns = set()
-feature_columns.update(donors_columns)
+feature_columns_base = set()
+feature_columns_base.update(donors_columns)
 
 # Preprocessing: Merge in the information about the date as further meta-features
 donations['DonationReceivedDateYear'] = donations['DonationReceivedDate'].dt.year
@@ -131,7 +129,7 @@ donations['DonationReceivedDateDayOfWeek'] = donations['DonationReceivedDate'].d
 donations['DonationReceivedDateTimeOfDay'] = donations['DonationReceivedDate'].dt.hour * 60 + donations['DonationReceivedDate'].dt.minute
 date_columns = ['DonationReceivedDateYear', 'DonationReceivedDateMonth', 'DonationReceivedDateDay', 'DonationReceivedDateDayOfWeek', 'DonationReceivedDateTimeOfDay']
 meta_items = pd.merge(meta_items, donations[['DonorID', 'ProjectID', *date_columns]], on=['DonorID', 'ProjectID'], how='left', sort=False)
-feature_columns.update(date_columns)
+feature_columns_base.update(date_columns)
 
 # Add *IsEqual columns to the meta-features
 is_equal_columns = [('ZipIsEqual', 'DonorZip', 'SchoolZip'), ('CityIsEqual', 'DonorCity', 'SchoolCity'), ('StateIsEqual', 'DonorState', 'SchoolState')]
@@ -139,15 +137,11 @@ for new_column, c_1, c_2  in is_equal_columns:
     meta_items[new_column] = (meta_items[c_1] == meta_items[c_2]).astype(int)
 
 # Make sure not to train on feature from the item; Otherwise, comment out the following line if necessary
-#feature_columns.update(list(zip(*is_equal_columns))[0])
+#feature_columns_base.update(list(zip(*is_equal_columns))[0])
 
 # Fill remaining non-numeric and NaN values (e.g. in DonorCity, DonorZip, SchoolCity and SchoolPercentageFreeLunch) with a value otherwise not used: -1
 # Most algorithms will not care about NaN (though some are allergic to it) but are keen on converting the data to floats
-meta_items[sorted(feature_columns)] = meta_items[sorted(feature_columns)].apply(pd.to_numeric, errors='coerce').fillna(-1.)
-
-# Add the predictions of algorithms from the learning subsystem to the feature-columns if a stacking meta-learner is explicitly enabled
-if stacking is True:
-    feature_columns.update(['Prediction' + alg_name for alg_name in algorithms_name])
+meta_items[sorted(feature_columns_base)] = meta_items[sorted(feature_columns_base)].apply(pd.to_numeric, errors='coerce').fillna(-1.)
 
 meta_algorithms = {}
 meta_algorithms_avail = {'SKLearn-AdaBoostClassifier': ensemble.AdaBoostClassifier, 'SKLearn-BaggingClassifier': ensemble.BaggingClassifier,
@@ -182,7 +176,7 @@ for train_idx, test_idx in rs.split(meta_items):
         test_value_counts['ValueCounts' + c] = pd.merge(test_value_counts, value_counts, on=c, how='left', suffixes=('_x', '_y'), sort=False)[['ValueCounts' + c + '_x', 'ValueCounts' + c + '_y']].sum(axis=1)
         meta_items.at[test_idx, 'ValueCounts' + c] = pd.merge(meta_items[[c]], test_value_counts, on=c, how='left', sort=False).loc[test_idx]['ValueCounts' + c]
 
-    feature_columns.update(['ValueCounts' + c for c in val_count_columns])
+    feature_columns_base.update(['ValueCounts' + c for c in val_count_columns])
 
     user_mean_columns = np.append(projects_columns, schools_columns)
     for c in user_mean_columns:
@@ -191,7 +185,7 @@ for train_idx, test_idx in rs.split(meta_items):
         # Fill the remaining user-values which were not covered by the training set with the overall train mean
         meta_items['UserMean' + c] = meta_items['UserMean' + c].fillna(meta_items.loc[train_idx][c].mean())
 
-    feature_columns.update(['UserMean' + c for c in user_mean_columns])
+    feature_columns_base.update(['UserMean' + c for c in user_mean_columns])
 
     for acc_name in algorithms_accuracy_name:
         # Convert between column names
@@ -207,7 +201,13 @@ for train_idx, test_idx in rs.split(meta_items):
         logging.debug('{acc_name:<16s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) :: | {:^25s} | Value-Counts: {:<50s}'.format('combined best', combined_best[0], str(meta_items.loc[test_idx][sorted(alg_acc_to_alg_columns.keys())].idxmin(axis=1).value_counts().to_dict()), i=i, n_splits=n_splits, acc_name=acc_name))
 
         for meta_alg_name, meta_alg in sorted(meta_algorithms.items(), key=lambda x: x[0]):
-            if 'accuracy prediction' in algorithm_selection_methods:
+            # Preserve the initial feature columns but allow algorithms to amend a newly spawned instance of the set prior to fitting
+            feature_columns = feature_columns_base.copy()
+            # Add the predictions of algorithms from the learning subsystem to the feature-columns if a stacking meta-learner is explicitly enabled
+            if 'stacking' in meta_algorithms_args[meta_alg_name] and meta_algorithms_args[meta_alg_name]['stacking'] is True:
+                feature_columns.update(['Prediction' + alg_name for alg_name in algorithms_name])
+
+            if 'accuracy prediction' in meta_algorithms_args[meta_alg_name]['methods']:
                 for alg_name in algorithms_name:
                     meta_alg.fit(meta_items.loc[train_idx][sorted(feature_columns)], meta_items.loc[train_idx][acc_name + alg_name])
                     meta_items['Prediction' + meta_alg_name + acc_name + alg_name] = meta_alg.predict(meta_items[sorted(feature_columns)])
@@ -226,9 +226,9 @@ for train_idx, test_idx in rs.split(meta_items):
 
                 meta_items['MetaPrediction' + meta_alg_name] = meta_items.lookup(meta_items.index, predict_alg_acc_columns)
                 best_meta = 'meta accuracy', meta_items.loc[train_idx]['MetaPrediction' + meta_alg_name].mean(), meta_items.loc[test_idx]['MetaPrediction' + meta_alg_name].mean()
-                logging.info('{meta_alg_name:<35s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) :: | {:^25s} | Train-{acc_name}: {:>7.2f}, Test-{acc_name}: {:>7.2f}'.format('meta acc', *best_meta, i=i, n_splits=n_splits, acc_name=acc_name, meta_alg_name=meta_alg_name))
+                logging.info('{meta_alg_name:<35s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) :: | {:^25s} | Training-{acc_name}: {:>7.2f}, Test-{acc_name}: {:>7.2f}'.format('meta acc', *best_meta, i=i, n_splits=n_splits, acc_name=acc_name, meta_alg_name=meta_alg_name))
 
-            if 'classification' in algorithm_selection_methods:
+            if 'classification' in meta_algorithms_args[meta_alg_name]['methods']:
                 # Treat the best performing algorithm of a row as the row's class
                 meta_items['SubalgorithmCategory'] = meta_items[sorted(alg_acc_to_alg_columns.keys())].idxmin(axis=1)
                 # Assign category IDs in descending order with the average algorithm training performance as to make the distances interpretable

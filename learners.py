@@ -22,7 +22,6 @@ n_random_non_interacted_items = config['n_random_non_interacted_items']
 sampling_methods = config['sampling_methods']
 n_folds = config['n_folds']
 algorithms_args = config['algorithms_args']
-groupby = config['groupby']
 accuracy_methods = config['accuracy_methods']
 rating_scores = config['rating_scores']
 rating_range_quantile = config['rating_range_quantile']
@@ -101,22 +100,31 @@ items['DonationAmount'] = pd.cut(items['DonationAmount'], bins=rating_bins, incl
 
 algorithms_name = set()
 
-for group in [{'columns': 'DonorID', 'algorithms_args': algorithms_args}] + groupby:
-    if type(group['columns']) is str:
-        item_columns = (group['columns'], 'ProjectID', 'DonationAmount')
-    elif type(group['columns']) is list:
-        item_columns = ('Concat' + ''.join(group['columns']), 'ProjectID', 'DonationAmount')
-        items[item_columns[0]] = ''
-        for c in group['columns']:
-            items[item_columns[0]] += items[c].astype(str)
+# Split the arguments to algorithms into a new dictionary with keys depending on which columns each algorithm requested the input to be grouped-by
+groupby = {}
+for alg_name, alg_spec in algorithms_args.items():
+    columns_unhashable = alg_spec['groupby'] if 'groupby' in alg_spec else 'DonorID'
+    # In contrast to lists, tuples are hashable and valid keys for dictionaries
+    columns = tuple(columns_unhashable) if type(columns_unhashable) is list else tuple([columns_unhashable])
+    if columns not in groupby:
+        groupby[columns] = {alg_name: alg_spec}
     else:
-        raise ValueError('Got an unexpected type of `columns` to groupby, expected either `str` or `list`, got "' + str(type(group['columns'])) + '"')
+        groupby[columns].update({alg_name: alg_spec})
 
-    collab_filters = recsys.CollaborativeFilters(items, item_columns, rating_scores=rating_scores, algorithms_args=group['algorithms_args'], accuracy_methods=accuracy_methods, log_level=log_level)
+for columns, algorithms_args_subset in sorted(groupby.items(), key=lambda x: x[0]):
+    if len(columns) == 1:
+        item_columns = (columns[0], 'ProjectID', 'DonationAmount')
+    else:
+        item_columns = ('Concat' + ''.join(columns), 'ProjectID', 'DonationAmount')
+        items[item_columns[0]] = ''
+        for c in columns:
+            items[item_columns[0]] += items[c].astype(str)
+
+    collab_filters = recsys.CollaborativeFilters(items, item_columns, rating_scores=rating_scores, algorithms_args=algorithms_args_subset, accuracy_methods=accuracy_methods, log_level=log_level)
     items = collab_filters.fit_all(n_folds=n_folds, n_random_non_interacted_items=n_random_non_interacted_items).items
     algorithms_name.update(collab_filters.algorithms_name)
 
-    content_filters = recsys.ContentFilers(items, item_columns, projects, ('ProjectTitle', 'ProjectShortDescription', 'ProjectNeedStatement', 'ProjectEssay'), algorithms_args=group['algorithms_args'], accuracy_methods=accuracy_methods, log_level=log_level)
+    content_filters = recsys.ContentFilers(items, item_columns, projects, ('ProjectTitle', 'ProjectShortDescription', 'ProjectNeedStatement', 'ProjectEssay'), algorithms_args=algorithms_args_subset, accuracy_methods=accuracy_methods, log_level=log_level)
     items = content_filters.fit_all(n_random_non_interacted_items=n_random_non_interacted_items).items
     algorithms_name.update(content_filters.algorithms_name)
 

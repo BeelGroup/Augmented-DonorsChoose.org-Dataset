@@ -19,6 +19,17 @@ sampling_methods:
     sample: 10000
 n_folds: 5
 algorithms_args:
+    # Parameterized learners specifying the name of a `model`,
+    # the model's `options` as dictionary and the columns by which to `groupby`
+    # the users before applying the algorithms.
+    #
+    # model: name of the `model`;
+    #   must be one of {'SciPy-SVD', 'SKLearn-SVD', 'SKLearn-KNN', 'SKLearn-NMF',
+    #   'SKLearn-TfidfVectorizer', 'Gensim-FastText'}
+    # options: dictionary of `options`; must be specified as to initialize the algorithm
+    # groupby: list of columns or string of one column by which to group-by
+    #   the users prior to applying the desired algorithm;
+    #   defaults to 'DonorID' if not set and can be omitted
     SciPy-SVD:
         model: SciPy-SVD
         options: { n_components: 100}
@@ -74,31 +85,18 @@ algorithms_args:
         model: Gensim-FastText
         options:
             fasttext_model_file: './data/wiki.en.bin'
-groupby:
-    -   columns: ['DonorState', 'DonorCity', 'DonorZip']
-        algorithms_args:
-            GroupByDonorStateCityZip-SKLearn-SVD:
-                model: SKLearn-SVD
-                options: { n_components: 100 }
-            GroupByDonorStateCityZip-SKLearn-KNN:
-                model: SKLearn-KNN
-                options: { n_neighbors: 40 }
-    -   columns: 'DonorCity'
-        algorithms_args:
-            GroupByDonorCity-SKLearn-SVD:
-                model: SKLearn-SVD
-                options: { n_components: 100 }
-            GroupByDonorCity-SKLearn-KNN:
-                model: SKLearn-KNN
-                options: { n_neighbors: 40 }
-    -   columns: 'DonorState'
-        algorithms_args:
-            GroupByDonorState-SKLearn-SVD:
-                model: SKLearn-SVD
-                options: { n_components: 100 }
-            GroupByDonorState-SKLearn-KNN:
-                model: SKLearn-KNN
-                options: { n_neighbors: 40 }
+    GroupByDonorStateCityZip-SKLearn-SVD:
+        model: SKLearn-SVD
+        options: { n_components: 100 }
+        groupby: ['DonorState', 'DonorCity', 'DonorZip']
+    GroupByDonorState-SKLearn-SVD:
+        model: SKLearn-SVD
+        options: { n_components: 100 }
+        groupby: 'DonorState'
+    GroupByDonorState-SKLearn-KNN:
+        model: SKLearn-KNN
+        options: { n_neighbors: 40 }
+        groupby: 'DonorState'
 accuracy_methods:
     - 'RMSE'
     - 'MAE'

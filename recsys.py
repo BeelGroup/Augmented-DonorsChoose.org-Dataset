@@ -579,7 +579,7 @@ class ContentFilers(object):
         column_names: Tuple of the form (user_column_name, item_column_name, user_item_pair_rating).
         content_items: Table of itemized item information with a column mapping the item-IDs to the items table.
         content_column_names: Tuple containing the columns which are to be concatenated and used as input features.
-        algorithms_args: Arguments in the form of a dictionary for each algorithm to be used. Possible keys are {'SKLearn-TfidfVectorizer'}, other keys will be silently ignored.
+        algorithms_args: Arguments in the form of a dictionary for each algorithm to be used. Possible keys are {'SKLearn-TfidfVectorizer', 'Gensim-FastText'}, other keys will be silently ignored.
         accuracy_methods: Set or array of names for accuracy methods which to use for evaluation. Accepts a subset of {'RMSE', 'MAE', 'RecallAtPosition'} with 'RMSE' and 'MAE' being silently ignored.
         log_level: Level at which to print messages to the console.
 

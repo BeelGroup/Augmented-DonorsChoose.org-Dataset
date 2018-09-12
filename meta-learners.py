@@ -181,8 +181,8 @@ for train_idx, test_idx in rs.split(meta_items):
     user_mean_columns = np.append(projects_columns, schools_columns)
     for c in user_mean_columns:
         aggregated_mean = meta_items.loc[train_idx].groupby('DonorID')[c].mean().reset_index().rename(columns={c: 'UserMean' + c})
-        meta_items = pd.merge(meta_items, aggregated_mean, on='DonorID', how='left', sort=False)
-        # Fill the remaining user-values which were not covered by the training set with the overall train mean
+        meta_items['UserMean' + c] = pd.merge(meta_items[['DonorID']], aggregated_mean, on='DonorID', how='left', sort=False)['UserMean' + c]
+        # Fill the remaining user-values which were not covered by the training set with the mean of the train set
         meta_items['UserMean' + c] = meta_items['UserMean' + c].fillna(meta_items.loc[train_idx][c].mean())
 
     feature_columns_base.update(['UserMean' + c for c in user_mean_columns])

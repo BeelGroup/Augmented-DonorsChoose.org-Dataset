@@ -42,6 +42,9 @@ meta_algorithms_args:
     DecisionTree:
         model: SKLearn-DecisionTreeClassifier
         options: {}
+    BalancedDecisionTree:
+        model: SKLearn-DecisionTreeClassifier
+        options: { class_weight: balanced }
     ExtraTree:
         model: SKLearn-ExtraTreeClassifier
         options: {}

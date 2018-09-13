@@ -11,6 +11,7 @@ from keras.models import Sequential
 from keras.utils import to_categorical
 from scipy import stats
 from sklearn import cluster, ensemble, tree
+from sklearn.metrics import mean_absolute_error, mean_squared_error
 from sklearn.model_selection import ShuffleSplit
 
 
@@ -238,11 +239,11 @@ for train_idx, test_idx in rs.split(meta_items):
                     meta_items['Prediction' + meta_alg_name + acc_name + alg_name] = meta_alg.predict(meta_items[sorted(feature_columns)].values)
 
                     log_line = '{meta_alg_name:<35s} ({:^15s}) (shuffle {i:>d}/{n_splits:<d}) {acc_name:<16s}{alg_name:<25s} ::'.format('meta acc', i=i, n_splits=n_splits, acc_name=acc_name, alg_name=alg_name, meta_alg_name=meta_alg_name)
-                    err = meta_items['Prediction' + meta_alg_name + acc_name + alg_name] - meta_items[acc_name + alg_name]
-                    rmse = np.sqrt(np.square(err.loc[train_idx]).mean()), np.sqrt(np.square(err.loc[test_idx]).mean())
-                    log_line += ' | Training-{0:s}: {1:>7.2f}, Test-{0:s}: {2:>7.2f}'.format('RMSE', *rmse)
-                    mae = np.abs(err.loc[train_idx]).mean(), np.abs(err.loc[test_idx]).mean()
-                    log_line += ' | Training-{0:s}: {1:>7.2f}, Test-{0:s}: {2:>7.2f}'.format('MAE', *mae)
+                    for eval_acc_name, eval_acc_method in sorted({'MAE': mean_absolute_error, 'RMSE': lambda x, y: np.sqrt(mean_squared_error(x, y))}.items(), key=lambda x: x[0]):
+                        train_acc = eval_acc_method(meta_items.loc[train_idx]['Prediction' + meta_alg_name + acc_name + alg_name].values, meta_items.loc[train_idx][acc_name + alg_name].values)
+                        test_acc = eval_acc_method(meta_items.loc[test_idx]['Prediction' + meta_alg_name + acc_name + alg_name].values, meta_items.loc[test_idx][acc_name + alg_name].values)
+                        log_line += ' | Training-{0:s}: {train_acc:>7.2f}, Test-{0:s}: {test_acc:>7.2f}'.format(eval_acc_name, train_acc=train_acc, test_acc=test_acc)
+
                     logging.debug(log_line)
 
                 meta_alg_to_alg_acc_columns = {'Prediction' + meta_alg_name + acc_name + alg_name: acc_name + alg_name for alg_name in algorithms_name}

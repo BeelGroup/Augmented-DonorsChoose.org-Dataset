@@ -112,12 +112,16 @@ donations = donations.drop_duplicates(subset=['DonorID', 'ProjectID'], keep='fir
 donations['DonationReceivedDate'] = pd.to_datetime(donations['DonationReceivedDate'])
 
 # Allow merges via the 'SchoolID' column by adding the required information to the meta-features table
-meta_items = pd.merge(meta_items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='left', sort=False)
+if 'SchoolID' not in meta_items.columns:
+    meta_items = pd.merge(meta_items, projects[['ProjectID', 'SchoolID']], on='ProjectID', how='left', sort=False)
+
 # Preprocessing: Add additional information about the item, user and transaction to the meta-features table
 projects_columns = ['ProjectSubjectCategoryTree', 'ProjectSubjectSubcategoryTree', 'ProjectResourceCategory', 'ProjectGradeLevelCategory']
 donors_columns = ['DonorState', 'DonorCity', 'DonorZip', 'DonorIsTeacher']
 schools_columns = ['SchoolMetroType', 'SchoolPercentageFreeLunch', 'SchoolState', 'SchoolCity', 'SchoolZip']
 for df_cat, columns, merge_on_column in [(projects, projects_columns, 'ProjectID'), (donors, donors_columns, 'DonorID'), (schools, schools_columns, 'SchoolID')]:
+    # Skip merging columns which are already in the table
+    columns = np.setdiff1d(columns, meta_items.columns)
     meta_items = pd.merge(meta_items, df_cat[np.append(columns, merge_on_column)], on=merge_on_column, how='left', sort=False)
 
 # Convert categorical text columns to integer values

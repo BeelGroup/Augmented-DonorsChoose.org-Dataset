@@ -180,7 +180,7 @@ plt.grid(b=False, axis='x')
 
 algorithms_name = ['SKLearn-KNN', 'SKLearn-SVD', 'Tfidf', 'FastText']
 algorithms_pretty_name = {'SKLearn-KNN': 'KNN', 'SKLearn-SVD': 'SVD', 'Tfidf': 'TF-IDF', 'FastText': 'FastText'}
-algorithms_value_counts = items[['RecallAtPosition' + alg_name for alg_name in algorithms_name]].idxmin(axis=1).value_counts().rename(dict(zip(['RecallAtPosition' + alg_name for alg_name in algorithms_name], ['SKLearn-KNN', 'SKLearn-SVD', 'Tfidf', 'FastText']))).to_dict()
+algorithms_value_counts = items[['RecallAtPosition' + alg_name for alg_name in algorithms_name]].idxmin(axis=1).value_counts().rename(dict(zip(['RecallAtPosition' + alg_name for alg_name in algorithms_name], algorithms_name))).to_dict()
 
 plt.hist([items['RecallAtPosition' + alg_name] for alg_name in algorithms_name], bins=10, density=True, label=['{:<s} ({:<2.2%} overall best)'.format(algorithms_pretty_name[alg_name], algorithms_value_counts[alg_name] / items.shape[0]) for alg_name in algorithms_name], histtype='step')
 
@@ -221,5 +221,75 @@ plt.gcf().autofmt_xdate()
 plt.tight_layout()
 
 plt.savefig('Meta-learner as Classifier and Error Predictor - Average position in Top-N test set for various meta-learner algorithms.pdf')
+plt.close()
+```
+
+* Learning subsystem Recall@N performance with augmented filtering techniques
+
+```python
+# Make LaTeX look like default matplotlib
+plt.rc('text', usetex=True)
+mpl.rcParams['mathtext.fontset'] = 'custom'
+mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
+mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
+mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
+
+plt.figure()
+plt.grid(b=False, axis='x')
+
+algorithms_name = ['SKLearn-KNN', 'SKLearn-SVD', 'GroupByDonorStateCityZip-SKLearn-SVD', 'GroupByDonorStateCity-SKLearn-SVD', 'Tfidf', 'FastText']
+recall_pos = [items['RecallAtPosition' + alg_name].values for alg_name in algorithms_name] + [items[['RecallAtPosition' + alg_name for alg_name in algorithms_name]].min(axis=1).values]
+algorithms_value_counts = items[['RecallAtPosition' + alg_name for alg_name in algorithms_name]].idxmin(axis=1).value_counts().rename(dict(zip(['RecallAtPosition' + alg_name for alg_name in algorithms_name], algorithms_name))).to_dict()
+
+algorithms_name = algorithms_name + ['Combined']
+algorithms_value_counts['Combined'] = items.shape[0]
+algorithms_pretty_name = {'SKLearn-KNN': 'KNN', 'SKLearn-SVD': 'SVD', 'GroupByDonorStateCityZip-SKLearn-SVD': 'SVD (State, City, Zip)', 'GroupByDonorStateCity-SKLearn-SVD': 'SVD (State, City)', 'Tfidf': 'TF-IDF', 'FastText': 'FastText', 'Combined': 'Combined'}
+
+plt.boxplot(recall_pos, positions=np.arange(len(algorithms_pretty_name)), meanline=True, showmeans=True, showfliers=False)
+
+# This got a little bit out of hand...
+# Actually just the percentage of each algorithm's contribution in the combined best is printed in a smaller font below the algorithm's name
+plt.xticks(np.arange(len(algorithms_pretty_name)), [r'{{\fontsize{{1em}}{{3em}}\selectfont{{}}{0:<s}}}{1}{{\fontsize{{0.8em}}{{3em}}\selectfont{{}}{2:<2.2f}\%}}'.format(algorithms_pretty_name[alg_name], '\n', 100 * algorithms_value_counts[alg_name]  / items.shape[0]) for alg_name in algorithms_name])
+plt.ylim(ymin=-1)
+
+plt.xlabel('Algorithm')
+plt.ylabel('Position in Top-N test set')
+
+plt.gcf().autofmt_xdate()
+plt.tight_layout()
+
+plt.savefig('Learning subsystem - Position in Top-N test set for various algorithms with augmented filtering techniques.pdf')
+plt.close()
+
+mpl.rcParams.update(mpl.rcParamsDefault)
+```
+
+* Meta-learner performance for classification and error prediction with augmented learning subsystem filtering techniques
+
+```python
+meta_subset = meta_items.loc[test_idx]
+
+plt.figure()
+plt.grid(b=False, axis='x')
+
+colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+meta_algorithms_name = [('MetaSubalgorithmPredictionBaggingCl', 'CL Bagging', colors[0]), ('MetaPredictionBaggingRg', 'EP Bagging', colors[3]), ('MetaSubalgorithmPredictionDecisionTreeCl', 'CL Decision Tree', colors[0]), ('MetaPredictionDecisionTreeRg40', 'EP Decision Tree', colors[3]), ('MetaSubalgorithmPredictionUserClusterKMeans', 'User-Clustering', colors[0]), ('MetaPredictionGradientBoostingRg', 'EP Gradient Boosting', colors[3]), ('MetaSubalgorithmPredictionStackingDecisionTree', 'Stacking DTree', colors[4])]
+average_recall = [meta_subset[c].mean() for c in list(zip(*meta_algorithms_name))[0]]
+
+plt.errorbar(np.arange(len(average_recall)), average_recall, color=list(zip(*meta_algorithms_name))[2], xerr=0.45, markersize=0., ls='none')
+plt.axhline(y=meta_subset[meta_subset['SubalgorithmCategory'].mode()[0]].mean(), color='orange', linestyle='--')
+plt.axhline(y=meta_subset.lookup(meta_subset.index, meta_subset['SubalgorithmCategory']).mean(), color='orange', linestyle='-')
+
+plt.xticks(np.arange(len(meta_algorithms_name)), list(zip(*meta_algorithms_name))[1])
+plt.ylim(ymin=-1)
+
+plt.xlabel('Algorithm')
+plt.ylabel('Average position in Top-N test set')
+
+plt.gcf().autofmt_xdate()
+plt.tight_layout()
+
+plt.savefig('Meta-learner as Classifier and Error Predictor - Average position in Top-N test set for various meta-learner algorithms with augmented learning subsystem filtering techniques.pdf')
 plt.close()
 ```

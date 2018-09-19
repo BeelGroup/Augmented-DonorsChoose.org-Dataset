@@ -195,7 +195,7 @@ for train_idx, test_idx in rs.split(meta_items):
     i += 1
 
     # Preprocessing: Add further information to the meta-features table which is test-train specific
-    val_count_columns = ['DonorID', 'ProjectID']
+    val_count_columns = ['DonorID']
     for c in val_count_columns:
         # Add the value counts of the train data directly to the table
         value_counts = meta_items.loc[train_idx][c].value_counts(sort=False).reset_index().rename(columns={'index': c, c: 'ValueCounts' + c})

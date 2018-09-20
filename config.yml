@@ -30,9 +30,6 @@ algorithms_args:
     # groupby: list of columns or string of one column by which to group-by
     #   the users prior to applying the desired algorithm;
     #   defaults to 'DonorID' if not set and can be omitted
-    SciPy-SVD:
-        model: SciPy-SVD
-        options: { n_components: 100}
     SKLearn-SVD:
         model: SKLearn-SVD
         options: { n_components: 100 }

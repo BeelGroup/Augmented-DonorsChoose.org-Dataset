@@ -9,7 +9,6 @@ random_state_seed: 2718281828
 # Base of the power for the sample_weight; a value of 1 disables any scaling
 class_penalty_base: 1
 algorithms_name:
-    - SciPy-SVD
     - SKLearn-SVD
     - SKLearn-KNN
     - SKLearn-NMF

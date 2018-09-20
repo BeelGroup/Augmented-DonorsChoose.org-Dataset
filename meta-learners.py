@@ -208,6 +208,16 @@ for train_idx, test_idx in rs.split(meta_items):
 
     feature_columns_base.update(['ValueCounts' + c for c in val_count_columns])
 
+    val_counts_by_user_columns = ['ProjectID']
+    for c in val_counts_by_user_columns:
+        value_counts = meta_items.loc[train_idx][c].value_counts(sort=False).reset_index().rename(columns={'index': c, c: 'ValueCountsByUser' + c})
+        value_counts_by_user = pd.merge(meta_items[['DonorID', c]], value_counts, on=c, how='left', sort=False).groupby('DonorID')['ValueCountsByUser' + c].sum().reset_index()
+        meta_items['ValueCountsByUser' + c] = pd.merge(meta_items[['DonorID']], value_counts_by_user, on='DonorID', how='left', sort=False)['ValueCountsByUser' + c]
+        # Fill the remaining user-values which were not covered by the training set with the mode of the train set
+        meta_items['ValueCountsByUser' + c] = meta_items['ValueCountsByUser' + c].fillna(meta_items.loc[train_idx]['ValueCountsByUser' + c].mode()[0])
+
+    feature_columns_base.update(['ValueCountsByUser' + c for c in val_counts_by_user_columns])
+
     user_mean_columns = np.append(projects_columns, schools_columns)
     for c in user_mean_columns:
         aggregated_mean = meta_items.loc[train_idx].groupby('DonorID')[c].mean().reset_index().rename(columns={c: 'UserMean' + c})

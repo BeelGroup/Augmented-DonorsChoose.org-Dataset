@@ -42,36 +42,6 @@ algorithms_args:
     SKLearn-NMF:
         model: SKLearn-NMF
         options: { n_components: 50 }
-    SPL-SVD:
-        model: SPL-SVD
-        options: {}
-    SVDpp:
-        model: SPL-SVDpp
-        options: {}
-    SPL-NMF:
-        model: SPL-NMF
-        options: {}
-    KNNWithMeans:
-        model: SPL-KNNWithMeans
-        options: { verbose: False }
-    KNNBasic:
-        model: SPL-KNNBasic
-        options: { verbose: False }
-    KNNWithZScore:
-        model: SPL-KNNWithZScore
-        options: { verbose: False }
-    KNNBaseline:
-        model: SPL-KNNBaseline
-        options: { verbose: False }
-    NormalPredictor:
-        model: SPL-NormalPredictor
-        options: {}
-    CoClustering:
-        model: SPL-CoClustering
-        options: {}
-    SlopeOne:
-        model: SPL-SlopeOne
-        options: {}
     Tfidf:
         model: SKLearn-TfidfVectorizer
         options:

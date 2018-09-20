@@ -68,18 +68,6 @@ algorithms_args:
         model: SKLearn-SVD
         options: { n_components: 100 }
         groupby: ['DonorState', 'DonorZip', 'DonorIsTeacher']
-    GroupByDonorStateIsTeacher-SKLearn-SVD:
-        model: SKLearn-SVD
-        options: { n_components: 100 }
-        groupby: ['DonorState', 'DonorIsTeacher']
-    GroupByDonorState-SKLearn-SVD:
-        model: SKLearn-SVD
-        options: { n_components: 100 }
-        groupby: 'DonorState'
-    GroupByDonorState-SKLearn-KNN:
-        model: SKLearn-KNN
-        options: { n_neighbors: 40 }
-        groupby: 'DonorState'
 accuracy_methods:
     - 'RMSE'
     - 'MAE'

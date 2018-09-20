@@ -218,7 +218,7 @@ for train_idx, test_idx in rs.split(meta_items):
 
     feature_columns_base.update(['ValueCountsByUser' + c for c in val_counts_by_user_columns])
 
-    user_mean_columns = np.append(projects_columns, schools_columns)
+    user_mean_columns = np.concatenate((projects_columns, schools_columns, list(zip(*is_equal_columns))[0]))
     for c in user_mean_columns:
         aggregated_mean = meta_items.loc[train_idx].groupby('DonorID')[c].mean().reset_index().rename(columns={c: 'UserMean' + c})
         meta_items['UserMean' + c] = pd.merge(meta_items[['DonorID']], aggregated_mean, on='DonorID', how='left', sort=False)['UserMean' + c]

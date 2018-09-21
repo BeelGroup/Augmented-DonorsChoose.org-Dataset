@@ -36,9 +36,6 @@ algorithms_args:
     SKLearn-KNN:
         model: SKLearn-KNN
         options: { n_neighbors: 40 }
-    SKLearn-NMF:
-        model: SKLearn-NMF
-        options: { n_components: 50 }
     Tfidf:
         model: SKLearn-TfidfVectorizer
         options:

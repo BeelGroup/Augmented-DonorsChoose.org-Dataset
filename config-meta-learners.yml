@@ -11,7 +11,6 @@ class_penalty_base: 1
 algorithms_name:
     - SKLearn-SVD
     - SKLearn-KNN
-    - SKLearn-NMF
     - Tfidf
     - FastText
 algorithms_accuracy_name: ['RecallAtPosition']

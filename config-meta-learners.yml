@@ -38,22 +38,10 @@ meta_algorithms_args:
     # stacking: toggle whether to performa a `stacking` step, meaning passing
     #   the prediction of the learning subsystem to the meta-learner;
     #   defaults to `False` if not set and can be omitted
-    AdaBoostCl:
-        model: SKLearn-AdaBoostClassifier
-        options: {}
-        methods: ['classification']
-    BaggingCl:
-        model: SKLearn-BaggingClassifier
-        options: {}
-        methods: ['classification']
     BaggingRg:
         model: SKLearn-BaggingRegressor
         options: {}
         methods: ['classification', 'accuracy prediction']
-    ExtraTreesCl:
-        model: SKLearn-ExtraTreesClassifier
-        options: {}
-        methods: ['classification']
     GradientBoostingCl:
         model: SKLearn-GradientBoostingClassifier
         options: {}

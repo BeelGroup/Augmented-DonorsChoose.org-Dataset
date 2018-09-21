@@ -63,14 +63,18 @@ meta_algorithms_args:
         model: SKLearn-DecisionTreeClassifier
         options: { class_weight: balanced }
         methods: ['classification']
-    DecisionTreeCl:
-        model: SKLearn-DecisionTreeClassifier
-        options: {}
-        methods: ['classification']
-    DecisionTreeRg:
+    DecisionTreeRg12:
         model: SKLearn-DecisionTreeRegressor
-        options: {}
-        methods: ['accuracy prediction']
+        options: { max_leaf_nodes: 12 }
+        methods: ['classification', 'accuracy prediction']
+    DecisionTreeRg20:
+        model: SKLearn-DecisionTreeRegressor
+        options: { max_leaf_nodes: 20 }
+        methods: ['classification', 'accuracy prediction']
+    DecisionTreeRg48:
+        model: SKLearn-DecisionTreeRegressor
+        options: { max_leaf_nodes: 48 }
+        methods: ['classification', 'accuracy prediction']
     UserClusterKMeans:
         model: SKLearn-UserCluster
         options: { getattr_class_name: KMeans }

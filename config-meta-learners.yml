@@ -91,13 +91,3 @@ meta_algorithms_args:
         model: SKLearn-ExtraTreeClassifier
         options: {}
         methods: ['classification']
-    NeuralNetwork:
-        model: Keras-NN
-        options:
-            epochs: 50
-            batch_size: 256
-            optimizer: adadelta
-            loss: categorical_crossentropy
-            metrics: ['accuracy']
-            verbose: 1
-        methods: ['classification']

@@ -61,7 +61,7 @@ meta_algorithms_args:
     GradientBoostingRg:
         model: SKLearn-GradientBoostingRegressor
         options: {}
-        methods: ['accuracy prediction']
+        methods: ['classification', 'accuracy prediction']
     RandomForestCl:
         model: SKLearn-RandomForestClassifier
         options: {}

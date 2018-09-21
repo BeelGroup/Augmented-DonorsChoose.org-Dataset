@@ -50,6 +50,18 @@ meta_algorithms_args:
         model: SKLearn-GradientBoostingRegressor
         options: {}
         methods: ['classification', 'accuracy prediction']
+    GradientBoostingRgMaxDepth4:
+        model: SKLearn-GradientBoostingRegressor
+        options: { max_depth: 4 }
+        methods: ['accuracy prediction']
+    GradientBoostingRgMaxDepth5:
+        model: SKLearn-GradientBoostingRegressor
+        options: { max_depth: 5 }
+        methods: ['accuracy prediction']
+    GradientBoostingRgMaxDepth6:
+        model: SKLearn-GradientBoostingRegressor
+        options: { max_depth: 6 }
+        methods: ['accuracy prediction']
     RandomForestCl:
         model: SKLearn-RandomForestClassifier
         options: {}

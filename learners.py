@@ -82,7 +82,9 @@ for method, opt in sorted(sampling_methods.items(), key=lambda x: sampling_metho
         # In case a frequency boundary is selected, ensure that the last condition is met in the sampled data; Thereby sample at least as many as specified but possibly more items
         if 'frequency_boundaries' in sampling_methods.keys() and len(sampling_methods['frequency_boundaries']) > 0:
             column, bound = sampling_methods['frequency_boundaries'][-1]
-            value_counts = items[column].value_counts(sort=False).sample(frac=1.)
+            # Note, value_counts is not deterministic in the way it outputs elements with the same value-count
+            # Hence, manually sort the series by its index before deterministically sampling results
+            value_counts = items[column].value_counts(sort=False).sort_index().sample(frac=1.)
 
             selection_limit = 1
             while value_counts.iloc[:selection_limit].sum() < opt:

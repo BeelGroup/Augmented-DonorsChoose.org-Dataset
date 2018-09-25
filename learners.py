@@ -26,7 +26,9 @@ accuracy_methods = config['accuracy_methods']
 rating_scores = config['rating_scores']
 rating_range_quantile = config['rating_range_quantile']
 
-logging.basicConfig(level=log_level)
+logging.basicConfig()
+logger = logging.getLogger()
+logger.setLevel(log_level)
 # Implicitly rely on other commands using the current random state from numpy
 np.random.seed(random_state_seed)
 
@@ -92,7 +94,7 @@ for method, opt in sorted(sampling_methods.items(), key=lambda x: sampling_metho
     else:
         raise ValueError('Expected a valid sampling method from ' + str(sampling_methods_priority.keys()) + ', got "' + str(method) + '"')
 
-logging.debug('{:d} unique donors donated to {:d} unique projects'.format(items['DonorID'].unique().shape[0], items['ProjectID'].unique().shape[0]))
+logger.debug('{:d} unique donors donated to {:d} unique projects'.format(items['DonorID'].unique().shape[0], items['ProjectID'].unique().shape[0]))
 # Convert DonationAmount into a rating
 rating_bins = np.logspace(*np.log10(items['DonationAmount'].quantile(rating_range_quantile).values), num=len(rating_scores) + 1)
 rating_bins[0], rating_bins[-1] = items['DonationAmount'].min(), items['DonationAmount'].max()

@@ -4,6 +4,10 @@
 
 The main inspiration for this research is based on the work performed by the ADAPT group at the Trinity college in Dublin. Of special note for this project is the research outlined in the paper [One-at-a-time: A Meta-Learning Recommender-System for Recommendation-Algorithm Selection on Micro Level](https://arxiv.org/abs/1805.12118).
 
+## Abstract
+
+The DonorsChoose.org dataset of past donations provides a feature-rich corpus of user and item matches which is yet unexplored in the scientific literature of recommender systems. The matching of donors to project in which they might be interested in is a classical recommendation task. Due to the availability of item-, user- and transaction-features, the corpus allows for different data exploration techniques to be applied and allows different meta-learning approaches to be tested. This study aims at providing baselines for recommender systems using testing methods from cross-validation and leave-one-out. Several filtering techniques are explored ranging from collaborative, content-based and hybrid approaches. The algorithm's performance is measured via the recall of recommended projects in a Top-N test.
+
 ## Code Snippets
 
 ### Non-interactive plotting

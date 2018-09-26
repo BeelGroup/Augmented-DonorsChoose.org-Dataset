@@ -8,6 +8,18 @@ The main inspiration for this research is based on the work performed by the ADA
 
 The DonorsChoose.org dataset of past donations provides a feature-rich corpus of user and item matches which is yet unexplored in the scientific literature of recommender systems. The matching of donors to project in which they might be interested in is a classical recommendation task. Due to the availability of item-, user- and transaction-features, the corpus allows for different data exploration techniques to be applied and allows different meta-learning approaches to be tested. This study aims at providing baselines for recommender systems using testing methods from cross-validation and leave-one-out. Several filtering techniques are explored ranging from collaborative, content-based and hybrid approaches. The algorithm's performance is measured via the recall of recommended projects in a Top-N test.
 
+## Code Design
+
+This repository is the single source of truth for the whole scientific exploration of the augmentation and evaluation of the DonorsChoose.org dataset. In addition to the actual code needed for reproduction, the repository contains all relevant status updates. The dedicated folder for documentation is appropriately named `doc`. The dataset may be stored in `data`. Changes happening within this folder are ignored by the version control system. The main programs are `learners.py` and `meta-learners.py` with helper functions being outsource to `recsys`. The first python-script is dedicated to creating a dataset augmented with results from various filtering techniques. It represents the learning subsystem and performs the computationally most expensive steps. The second python-script further augments the dataset and executes the meta-learning algorithms.
+
+### Learning Subsystem
+
+The learning subsystem is contained in the `learners.py` script and is adaptable via the configuration file `config.yml`. Most parameters should be self-explanatory. If deemed necessary, a small explanatory string is added. Most notably is the dictionary `algorithms_args` which specifies all the algorithms from the learning subsystem which to execute on the data.
+
+### Meta-learning System
+
+The final augmentation is performed in `meta-learners.py`. The program's behavior can be configured via `config-meta-learners.yml`. Its most important option is the dictionary describing the meta-algorithms which to execute on the dataset.
+
 ## Code Snippets
 
 ### Non-interactive plotting

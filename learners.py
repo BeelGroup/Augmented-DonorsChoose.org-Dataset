@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import argparse
 import logging
 
 import numpy as np
@@ -8,7 +9,11 @@ import yaml
 
 import recsys
 
-with open('config.yml', 'r') as stream:
+parser = argparse.ArgumentParser(description='Configurable learning subsystem for data augmentation.', formatter_class=argparse.ArgumentDefaultsHelpFormatter)
+parser.add_argument('-i', '--input-config', dest='config_path', action='store', type=str, default='config.yml')
+args = parser.parse_args()
+
+with open(args.config_path, 'r') as stream:
     config = yaml.load(stream)
 
 # Read in all the configuration once instead of possibly failing later because of missing values

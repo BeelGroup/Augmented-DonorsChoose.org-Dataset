@@ -201,6 +201,10 @@ rs = ShuffleSplit(n_splits=n_splits, train_size=train_size, test_size=None)
 for train_idx, test_idx in rs.split(meta_items):
     i += 1
 
+    # Preserve which parts of the dataset were used for testing respectively training as to make the final results in the output table meaningful
+    meta_items.at[train_idx, 'isTest'] = False
+    meta_items.at[test_idx, 'isTest'] = True
+
     # Preprocessing: Add further information to the meta-features table which is test-train specific
     val_count_columns = ['DonorID']
     for c in val_count_columns:

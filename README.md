@@ -6,11 +6,11 @@ The main inspiration for this research is based on the work performed by the ADA
 
 ## Abstract
 
-The DonorsChoose.org dataset of past donations provides a big and feature-rich corpus of user and item matches. The dataset matches donors to projects in which they might be interested in and hence is intrinsically about recommendations. Due to the availability of item-, user- and transaction-features, this corpus represents a suitable candidate for meta-learning approaches to be tested. This study aims at providing an augmented corpus for further recommender systems studies to test and evaluate meta-learning approaches. In our augmentation, metadata of collaborative and content-based filtering techniques is amended to the corpus. It is further extended with aggregated statistics for users and transactions and an exemplary meta-learning experiment. The performance in the learning subsystem is measured via the recall of recommended items in a Top-N test set. The augmented dataset and the source code are released into the public domain at GitHub:BeelGroup/Augmented-DonorsChoose.org-Dataset.
+The DonorsChoose.org dataset of past donations provides a big and feature-rich corpus of users and items. The dataset matches donors to projects in which they might be interested in and hence is intrinsically about recommendations. Due to the availability of item-, user- and transaction-features, this corpus represents a suitable candidate for meta-learning approaches to be tested. This study aims at providing an augmented corpus for further recommender systems studies to test and evaluate meta-learning approaches. In the augmentation, metadata of collaborative and content-based filtering techniques is amended to the corpus. It is further extended with aggregated statistics for users and transactions and an exemplary meta-learning experiment. The performance in the learning subsystem is measured via the recall of recommended items in a Top-N test set. The augmented dataset and the source code are released into the public domain at GitHub:BeelGroup/Augmented-DonorsChoose.org-Dataset.
 
 ## Corpus Features and Augmented Metadata
 
-The following represents an organized list of columns with each being present for every entry in the itemized transaction table.
+The following represents an organized list of names of columns. Each entry in the itemized transaction table provides a value in the listed columns. If the name of a column is deemed not self-explanatory, a short description is amended.
 
 ### Transaction
 

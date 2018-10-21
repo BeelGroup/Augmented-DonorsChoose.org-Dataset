@@ -12,7 +12,6 @@ sampling_methods:
         - 'DonorState != DonorState'  # Convoluted way to drop NaN values
         - 'DonorCity != DonorCity'
         - 'DonorZip != DonorZip'
-        - '0. <= DonationAmount <= 2.'
     frequency_boundaries:
         # Conditions must not be met at the same time; though, the last one will always hold
         - ['DonorID', 2]

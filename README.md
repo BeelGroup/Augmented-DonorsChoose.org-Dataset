@@ -60,7 +60,7 @@ mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
 
 ### Visualizations
 
-* Plot the donated amount in bins on a logarithmic scale
+* Donated amount in bins on a logarithmic scale
 
 ```python
 items_orig = donations[['ProjectID', 'DonorID', 'DonationAmount']]
@@ -71,11 +71,11 @@ plt.gca().set_xscale('log')
 plt.xlabel('Donated Amount')
 plt.ylabel('#Occurrence')
 plt.tight_layout()
-plt.savefig('DonationAmount - Distribution of the donated amount on a logarithmic scale.pdf')
+plt.savefig('DonationAmount - Distribution of the donated amount on a logarithmic scale.pdf', bbox_inches='tight')
 plt.close()
 ```
 
-* Plot the donated amount in bins on a logarithmic scale for clean subset
+* Donated amount in bins on a logarithmic scale for clean subset
 
 ```python
 items_orig = donations.groupby(['DonorID', 'ProjectID'])['DonationAmount'].sum().reset_index()
@@ -90,20 +90,51 @@ plt.gca().set_xscale('log')
 plt.xlabel('Donated Amount')
 plt.ylabel('Frequency')
 plt.tight_layout()
-plt.savefig('DonationAmount - Distribution of the donated amount on a logarithmic scale (for donors with at least 2 donations, excluding duplicates and low donations).pdf')
+plt.savefig('DonationAmount - Distribution of the donated amount on a logarithmic scale (for donors with at least 2 donations, excluding duplicates and low donations).pdf', bbox_inches='tight')
 plt.close()
 ```
 
-* Plot the distribution of ratings
+* Distribution of ratings
 
 ```python
+# Shrink size and enlarge font
+mpl.rcParams['figure.figsize'][0] /= 1.5
+
 plt.figure()
+plt.grid(b=False, axis='x')
+
 plt.hist(items['DonationAmount'], bins=5, density=True, histtype='step')
 plt.xlabel('Rating')
 plt.ylabel('Frequency')
 plt.tight_layout()
-plt.savefig('DonationAmount - Distribution of ratings for logarithmic bins and excluded outliers.pdf')
+plt.savefig('DonationAmount - Distribution of ratings for logarithmic bins and excluded outliers.pdf', bbox_inches='tight')
 plt.close()
+
+mpl.rcParams['figure.figsize'][0] *= 1.5
+```
+
+* Number of user donations
+
+```python
+# Shrink size and enlarge font
+mpl.rcParams['figure.figsize'][0] /= 1.5
+
+plt.figure()
+plt.grid(b=False, axis='x')
+
+user_value_counts = items['DonorID'].value_counts()
+# Disregard outliers
+user_value_counts = user_value_counts[user_value_counts <= user_value_counts.mean() + user_value_counts.std()]
+
+plt.hist(user_value_counts, bins=30, density=True, histtype='step')
+
+plt.xlabel('Interactions per user')
+plt.ylabel('Frequency')
+plt.tight_layout()
+plt.savefig('DonorID - Distribution of number of interactions per user.pdf', bbox_inches='tight')
+plt.close()
+
+mpl.rcParams['figure.figsize'][0] *= 1.5
 ```
 
 * RMSE for collaborative filtering techniques
@@ -131,7 +162,7 @@ plt.ylabel('Test RMSE')
 plt.gcf().autofmt_xdate()
 plt.tight_layout()
 
-plt.savefig('Collaborative Filters - RMSE for DIY algorithms and some baselines.pdf')
+plt.savefig('Collaborative Filters - RMSE for DIY algorithms and some baselines.pdf', bbox_inches='tight')
 plt.close()
 ```
 
@@ -156,7 +187,7 @@ plt.ylabel('Average position in Top-N test set')
 plt.gcf().autofmt_xdate()
 plt.tight_layout()
 
-plt.savefig('Collaborative and Content-based Filters - Average position in Top-N test set for various algorithms.pdf')
+plt.savefig('Collaborative and Content-based Filters - Average position in Top-N test set for various algorithms.pdf', bbox_inches='tight')
 plt.close()
 ```
 
@@ -175,7 +206,7 @@ plt.ylabel('Frequency')
 
 plt.tight_layout()
 
-plt.savefig('Collaborative and Content-based Filters - Distribution of position in Top-N test set for various algorithms.pdf')
+plt.savefig('Collaborative and Content-based Filters - Distribution of position in Top-N test set for various algorithms.pdf', bbox_inches='tight')
 plt.close()
 ```
 
@@ -200,7 +231,7 @@ plt.ylabel('Position in Top-N test set')
 plt.gcf().autofmt_xdate()
 plt.tight_layout()
 
-plt.savefig('Learning subsystem - Position in Top-N test set for various algorithms.pdf')
+plt.savefig('Learning subsystem - Position in Top-N test set for various algorithms.pdf', bbox_inches='tight')
 plt.close()
 ```
 
@@ -220,7 +251,7 @@ plt.ylabel('Frequency')
 
 plt.tight_layout()
 
-plt.savefig('Learning subsystem - Distribution of position in Top-N test set for various algorithms.pdf')
+plt.savefig('Learning subsystem - Distribution of position in Top-N test set for various algorithms.pdf', bbox_inches='tight')
 plt.close()
 ```
 
@@ -250,20 +281,13 @@ plt.ylabel('Average position in Top-N test set')
 plt.gcf().autofmt_xdate()
 plt.tight_layout()
 
-plt.savefig('Meta-learner as Classifier and Error Predictor - Average position in Top-N test set for various meta-learner algorithms.pdf')
+plt.savefig('Meta-learner as Classifier and Error Predictor - Average position in Top-N test set for various meta-learner algorithms.pdf', bbox_inches='tight')
 plt.close()
 ```
 
 * Learning subsystem Recall@N performance with augmented filtering techniques
 
 ```python
-# Make LaTeX look like default matplotlib
-plt.rc('text', usetex=True)
-mpl.rcParams['mathtext.fontset'] = 'custom'
-mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
-mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
-mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
-
 plt.figure()
 plt.grid(b=False, axis='x')
 
@@ -288,10 +312,37 @@ plt.ylabel('Position in Top-N test set')
 plt.gcf().autofmt_xdate()
 plt.tight_layout()
 
-plt.savefig('Learning subsystem - Position in Top-N test set for various algorithms with augmented filtering techniques.pdf')
+plt.savefig('Learning subsystem - Position in Top-N test set for various algorithms with augmented filtering techniques.pdf', bbox_inches='tight')
 plt.close()
+```
 
-mpl.rcParams.update(mpl.rcParamsDefault)
+* Learning subsystem Recall@N performance
+
+```python
+plt.figure()
+plt.grid(b=False, axis='x')
+
+algorithms_name = ['SKLearn-KNN', 'SKLearn-SVD', 'Tfidf', 'FastText']
+recall_pos = [items['RecallAtPosition' + alg_name].values for alg_name in algorithms_name]
+algorithms_value_counts = items[['RecallAtPosition' + alg_name for alg_name in sorted(algorithms_name)]].idxmin(axis=1).value_counts().rename(dict(zip(['RecallAtPosition' + alg_name for alg_name in algorithms_name], algorithms_name))).to_dict()
+
+algorithms_pretty_name = {'SKLearn-KNN': 'KNN', 'SKLearn-SVD': 'SVD', 'GroupByDonorStateCityZip-SKLearn-SVD': 'SVD (State, City, Zip)', 'GroupByDonorStateCity-SKLearn-SVD': 'SVD (State, City)', 'Tfidf': 'TF-IDF', 'FastText': 'FastText', 'Combined': 'Combined'}
+
+plt.boxplot(recall_pos, positions=np.arange(len(algorithms_name)), meanline=True, showmeans=True, showfliers=False)
+
+# This got a little bit out of hand...
+# Actually just the percentage of each algorithm's contribution in the combined best is printed in a smaller font below the algorithm's name
+plt.xticks(np.arange(len(algorithms_name)), [r'{{\fontsize{{1em}}{{3em}}\selectfont{{}}{0:<s}}}{1}{{\fontsize{{0.8em}}{{3em}}\selectfont{{}}{2:<2.2f}\%}}'.format(algorithms_pretty_name[alg_name], '\n', 100 * algorithms_value_counts[alg_name]  / items.shape[0]) for alg_name in algorithms_name])
+plt.ylim(ymin=-1)
+
+plt.xlabel('Algorithm')
+plt.ylabel('Position in Top-N test set')
+
+plt.gcf().autofmt_xdate()
+plt.tight_layout()
+
+plt.savefig('Learning subsystem - Position in Top-N test set.pdf', bbox_inches='tight')
+plt.close()
 ```
 
 * Meta-learner performance for classification and error prediction with augmented learning subsystem filtering techniques
@@ -320,7 +371,36 @@ plt.ylabel('Average position in Top-N test set')
 plt.gcf().autofmt_xdate()
 plt.tight_layout()
 
-plt.savefig('Meta-learner as Classifier and Error Predictor - Average position in Top-N test set for various meta-learner algorithms with augmented learning subsystem filtering techniques.pdf')
+plt.savefig('Meta-learner as Classifier and Error Predictor - Average position in Top-N test set for various meta-learner algorithms with augmented learning subsystem filtering techniques.pdf', bbox_inches='tight')
+plt.close()
+```
+
+* Meta-learner performance
+
+```python
+meta_subset = meta_items.loc[test_idx]
+
+plt.figure()
+plt.grid(b=False, axis='x')
+
+colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
+
+meta_algorithms_name = [('MetaSubalgorithmPredictionDecisionTreeRg', 'Classifying DTree', colors[0]), ('MetaPredictionGradientBoostingRg', 'GB Recall Prediction', colors[1]), ('MetaSubalgorithmPredictionUserClusterKMeans', 'K-Means Clustering', colors[2]), ('MetaSubalgorithmPredictionStackingDecisionTree', 'Stacking DTree', colors[3])]
+average_recall = [meta_subset[c].mean() for c in list(zip(*meta_algorithms_name))[0]]
+
+plt.errorbar(np.arange(len(average_recall)), average_recall, color=list(zip(*meta_algorithms_name))[2], xerr=0.45, markersize=0., ls='none')
+plt.axhline(y=meta_subset[meta_subset['SubalgorithmCategory'].mode()[0]].mean(), color='orange', linestyle='--')
+
+plt.xticks(np.arange(len(meta_algorithms_name)), list(zip(*meta_algorithms_name))[1])
+plt.ylim(ymin=meta_subset.lookup(meta_subset.index, meta_subset['SubalgorithmCategory']).mean()-1)
+
+plt.xlabel('Algorithm')
+plt.ylabel('Average position in Top-N test set')
+
+plt.gcf().autofmt_xdate()
+plt.tight_layout()
+
+plt.savefig('Meta-learner Performance - Average position in Top-N test set for various meta-learner algorithms with augmented learning subsystem filtering techniques.pdf', bbox_inches='tight')
 plt.close()
 ```
 

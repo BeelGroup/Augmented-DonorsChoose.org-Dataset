@@ -22,7 +22,9 @@ The final augmentation is performed in `meta-learners.py`. The program's behavio
 
 ## Code Snippets
 
-### Non-interactive plotting
+### Configuration of Visuals
+
+* Non-interactive plotting
 
 ```python
 import matplotlib as mpl
@@ -30,6 +32,30 @@ import matplotlib as mpl
 mpl.use('cairo')
 
 import matplotlib.pyplot as plt
+```
+
+* Prettify plots
+
+```python
+import seaborn as sns
+
+sns.set_style('whitegrid')
+```
+
+* Suitable Aspect Ratio for Plots
+
+```python
+mpl.rcParams['figure.figsize'] = 6.4, 3.2
+```
+
+* Enforce text rendering via LaTeX and mimic the font of the default matplotlib text
+
+```python
+plt.rc('text', usetex=True)
+mpl.rcParams['mathtext.fontset'] = 'custom'
+mpl.rcParams['mathtext.rm'] = 'Bitstream Vera Sans'
+mpl.rcParams['mathtext.it'] = 'Bitstream Vera Sans:italic'
+mpl.rcParams['mathtext.bf'] = 'Bitstream Vera Sans:bold'
 ```
 
 ### Visualizations

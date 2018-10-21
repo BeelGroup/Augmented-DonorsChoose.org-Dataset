@@ -8,6 +8,92 @@ The main inspiration for this research is based on the work performed by the ADA
 
 The DonorsChoose.org dataset of past donations provides a feature-rich corpus of user and item matches which is yet unexplored in the scientific literature of recommender systems. The matching of donors to project in which they might be interested in is a classical recommendation task. Due to the availability of item-, user- and transaction-features, the corpus allows for different data exploration techniques to be applied and allows different meta-learning approaches to be tested. This study aims at providing baselines for recommender systems using testing methods from cross-validation and leave-one-out. Several filtering techniques are explored ranging from collaborative, content-based and hybrid approaches. The algorithm's performance is measured via the recall of recommended projects in a Top-N test.
 
+## Corpus Features and Augmented Metadata
+
+The following represents an organized list of columns with each being present for every entry in the itemized transaction table.
+
+### Transaction
+
+* `DonationID`
+* `DonationIncludedOptionalDonation`
+* `DonationReceivedDate`
+  * `DonationReceivedDateDay`
+  * `DonationReceivedDateDayOfWeek`
+  * `DonationReceivedDateMonth`
+  * `DonationReceivedDateTimeOfDay`
+  * `DonationReceivedDateYear`
+* `DonorCartSequence`
+* `DonorID`
+* `ProjectID`
+* `DonationAmount`
+* `(Zip|City|Sate)IsEqual`
+  i.e. whether user and item have identical values
+
+### User
+
+* `DonorState`
+* `DonorCity`
+* `DonorZip`
+* `DonorIsTeacher`
+* `Concat[(DonorState|DonorCity|...)+]`
+  i.e. the concatenated value of mentioned columns
+
+### Item
+
+* `SchoolID`
+* `ProjectGradeLevelCategory`
+* `ProjectResourceCategory`
+* `ProjectSubjectCategoryTree`
+* `ProjectSubjectSubcategoryTree`
+* `SchoolCity`
+* `SchoolMetroType`
+* `SchoolPercentageFreeLunch`
+* `SchoolState`
+* `SchoolZip`
+
+### Learning Subsystem
+
+* Collaborative Filtering Techniques
+  * `AbsoluteErrorSKLearn-(KNN|SVD)`
+  * `SquareErrorSKLearn-(KNN|SVD)`
+  * `RecallAtPositionSKLearn-(KNN|SVD)`
+  * `PredictionSKLearn-(KNN|SVD)`
+    i.e. decomposition of the matrix or the interactions of the neighbor
+* Content-based Filtering Techniques
+  * `RecallAtPosition(FastText|Tfidf)`
+  * `Prediction(FastText|Tfidf)`
+    i.e. cosine similarity of user profile and recommendation
+* Collaborative recommendations for user-groups
+  * `AbsoluteErrorGroupBy[(DonorState|DonorCity|...)+]-SKLearn-SVD`
+  * `SquareErrorGroupBy[(DonorState|DonorCity|...)+]-SKLearn-SVD`
+  * `RecallAtPositionGroupBy[(DonorState|DonorCity|...)+]-SKLearn-SVD`
+  * `PredictionGroupByDonor[(DonorState|DonorCity|...)+]-SKLearn-SVD`
+
+### Statistics
+
+* General
+  * `isTest`
+    i.e. whether the entry was used for testing during the holdout split
+* Values aggregated by User
+  * `ValueCountsDonorID`
+    i.e. number of transactions
+  * `ValueCountsByUserProjectID`
+    i.e. whether the user donated to popular projects
+  * `UserMean(DonationAmount|ProjectGradeLevelCategory|...)`
+
+### Meta-Learning System
+
+* `MetaPrediction(BaggingRg|GradientBoostingRg|...)RecallAtPosition(SKLearn-SVD|FastText|...)`
+  i.e. prediction of the error of the individual meta-learners in the error prediction step
+* `MetaPrediction(BaggingRg|GradientBoostingRg|...)RecallAtPosition(SKLearn-SVD|FastText|...)`
+  i.e. prediction if the suggested algorithm is selected via error prediction
+* `SubalgorithmPrediction(BaggingRg|GradientBoostingRg|...)RecallAtPosition`
+  i.e. prediction of the class in the classification step
+* `MetaSubalgorithmPrediction(BaggingRg|GradientBoostingRg|...)RecallAtPosition(SKLearn-SVD|FastText|...)`
+  i.e. prediction if the suggested algorithm is selected via classification
+* `SubalgorithmCategory`
+  i.e. 'category' of the transaction if assigned to the best performing algorithm
+
 ## Code Design
 
 This repository is the single source of truth for the whole scientific exploration of the augmentation and evaluation of the DonorsChoose.org dataset. In addition to the actual code needed for reproduction, the repository contains all relevant status updates. The dedicated folder for documentation is appropriately named `doc`. The dataset may be stored in `data`. Changes happening within this folder are ignored by the version control system. The main programs are `learners.py` and `meta-learners.py` with helper functions being outsource to `recsys`. The first python-script is dedicated to creating a dataset augmented with results from various filtering techniques. It represents the learning subsystem and performs the computationally most expensive steps. The second python-script further augments the dataset and executes the meta-learning algorithms.

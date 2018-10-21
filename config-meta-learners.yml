@@ -74,6 +74,10 @@ meta_algorithms_args:
         model: SKLearn-DecisionTreeClassifier
         options: { class_weight: balanced }
         methods: ['classification']
+    DecisionTreeRg:
+        model: SKLearn-DecisionTreeRegressor
+        options: {}
+        methods: ['classification', 'accuracy prediction']
     DecisionTreeRg12:
         model: SKLearn-DecisionTreeRegressor
         options: { max_leaf_nodes: 12 }

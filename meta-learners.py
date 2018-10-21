@@ -164,7 +164,7 @@ donations['DonationReceivedDateDay'] = donations['DonationReceivedDate'].dt.day
 donations['DonationReceivedDateDayOfWeek'] = donations['DonationReceivedDate'].dt.dayofweek
 donations['DonationReceivedDateTimeOfDay'] = donations['DonationReceivedDate'].dt.hour * 60 + donations['DonationReceivedDate'].dt.minute
 date_columns = ['DonationReceivedDateYear', 'DonationReceivedDateMonth', 'DonationReceivedDateDay', 'DonationReceivedDateDayOfWeek', 'DonationReceivedDateTimeOfDay']
-meta_items = pd.merge(meta_items, donations[['DonorID', 'ProjectID', *date_columns]], on=['DonorID', 'ProjectID'], how='left', sort=False)
+meta_items = pd.merge(meta_items, donations[['DonorID', 'ProjectID', *np.setdiff1d(date_columns, meta_items.columns)]], on=['DonorID', 'ProjectID'], how='left', sort=False)
 feature_columns_base.update(date_columns)
 
 # Add *IsEqual columns to the meta-features

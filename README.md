@@ -184,26 +184,27 @@ plt.close()
 
 ```python
 # Shrink size and enlarge font
-mpl.rcParams['figure.figsize'][0] /= 1.5
+mpl.rcParams['figure.figsize'][0] /= 1.3
 
 plt.figure()
 plt.grid(b=False, axis='x')
 
 plt.hist(items['DonationAmount'], bins=5, density=True, histtype='step')
+plt.xticks([1.45, 2.2, 3., 3.8, 4.6], np.arange(1, 5+1))
 plt.xlabel('Rating')
 plt.ylabel('Frequency')
 plt.tight_layout()
 plt.savefig('DonationAmount - Distribution of ratings for logarithmic bins and excluded outliers.pdf', bbox_inches='tight')
 plt.close()
 
-mpl.rcParams['figure.figsize'][0] *= 1.5
+mpl.rcParams['figure.figsize'][0] *= 1.3
 ```
 
 * Number of user donations
 
 ```python
 # Shrink size and enlarge font
-mpl.rcParams['figure.figsize'][0] /= 1.5
+mpl.rcParams['figure.figsize'][0] /= 1.3
 
 plt.figure()
 plt.grid(b=False, axis='x')
@@ -220,7 +221,7 @@ plt.tight_layout()
 plt.savefig('DonorID - Distribution of number of interactions per user.pdf', bbox_inches='tight')
 plt.close()
 
-mpl.rcParams['figure.figsize'][0] *= 1.5
+mpl.rcParams['figure.figsize'][0] *= 1.3
 ```
 
 * RMSE for collaborative filtering techniques

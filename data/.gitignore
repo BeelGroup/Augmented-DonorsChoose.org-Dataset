@@ -5,5 +5,6 @@
 *.bin
 *.vec
 
-# Do not attempt to track tables used to store item information
+# Do not attempt to track tables used to store item information excpet for the final output
 *.csv
+!meta-learner-items.csv
